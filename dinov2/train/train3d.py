@@ -442,10 +442,10 @@ class PrinterIfImageShapeIs0d:
         Returns:
             dict: The input data dictionary, unchanged.
         """
-        for key in self.keys:
-            image = data[key]
+
+        image = data[key]
                 #if np.any(np.array(image.shape) == 0):
-            print(data.keys())
+        print(data.keys())
         return image
 
 if __name__ == "__main__":
