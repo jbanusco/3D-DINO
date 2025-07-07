@@ -377,7 +377,8 @@ def do_train(cfg, model, resume=False):
 
 def main(args):
     cfg = setup_3d(args)
-
+    print("BONJOUR")
+    exit()
 
     if distributed.is_main_process():
         wandb.login()
