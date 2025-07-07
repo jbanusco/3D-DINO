@@ -445,7 +445,7 @@ class PrinterIfImageShapeIs0d:
         for key in self.keys:
             image = data[key]
                 #if np.any(np.array(image.shape) == 0):
-            print(self.message, key, image.meta["filename_or_obj"])
+            print(data.keys())
         return data
 
 if __name__ == "__main__":
