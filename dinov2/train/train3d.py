@@ -17,7 +17,7 @@ from fvcore.common.checkpoint import PeriodicCheckpointer
 import torch
 
 from dinov2.data import SamplerType, make_data_loader, make_dataset_3d
-from dinov2.data import collate_data_and_cast, DataAugmentationDINO3d, MaskingGenerator3d, CropForegroundSwapSliceDims
+from dinov2.data import collate_data_and_cast, DataAugmentationDINO3d, MaskingGenerator3d, CropForegroundSwapSliceDims, Printer
 import dinov2.distributed as distributed
 from dinov2.fsdp import FSDPCheckpointer
 from dinov2.logging import MetricLogger
@@ -211,6 +211,7 @@ def do_train(cfg, model, resume=False):
 
     data_transform = Compose(
             [
+                Printer(),
                 LoadImaged(keys=["image"], ensure_channel_first=True),
                 Lambdad(keys=["image"], func=random_select_time),
                 Lambdad(

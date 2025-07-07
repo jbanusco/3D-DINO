@@ -30,7 +30,19 @@ import math
 
 logger = logging.getLogger("dinov2")
 
+class Printer(monai.transforms.Transform):
 
+    def __call__(self, data):
+
+        img_path = data["img_path"]
+        img = LoadImaged(img_path)
+
+        if img.shape[1]==0 or img.shape[2]==0 or img.shape[3]==0:
+
+            print(data)
+
+
+        return data
 
 class RandomResizedCrop3d(Crop, Randomizable):
     def __init__(
