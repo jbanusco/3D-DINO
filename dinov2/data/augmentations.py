@@ -146,7 +146,8 @@ class CropForegroundSwapSliceDims(CropForeground):
         img = img.permute(*perm)
 
         # crop foreground
-        return super().__call__(img, mode, lazy, **pad_kwargs)
+        return img
+        #return super().__call__(img, mode, lazy, **pad_kwargs)
 
 
 class DataAugmentationDINO3d(object):
