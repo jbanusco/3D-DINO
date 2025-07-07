@@ -146,13 +146,8 @@ class CropForegroundSwapSliceDims(CropForeground):
         img = img.permute(*perm)
 
         # crop foreground
-        img = super().__call__(img, mode, lazy, **pad_kwargs)
-        if img.shape[-1] == 0:
-            print("=" * 50)
-            print(img.shape)
-            print(img_dict['image'])
-            exit()
-        return img
+        return super().__call__(img, mode, lazy, **pad_kwargs)
+
 
 
 class DataAugmentationDINO3d(object):
