@@ -238,8 +238,8 @@ def do_train(cfg, model, resume=False):
                     keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
                 ),  # replace NaNs with mean
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
-                PrinterIfImageShapeIs0d(keys=["image"], message="Image shape:"),
-                CropForegroundSwapSliceDims(select_fn=lambda x: x > -1),
+                #PrinterIfImageShapeIs0d(keys=["image"], message="Image shape:"),
+                CropForegroundSwapSliceDims(select_fn=lambda x: x > -100000),
                 DataAugmentationDINO3d(
                     cfg.crops.global_crops_in_slice_scale,
                     cfg.crops.global_crops_cross_slice_scale,
@@ -377,8 +377,7 @@ def do_train(cfg, model, resume=False):
 
 def main(args):
     cfg = setup_3d(args)
-    print("BONJOUR")
-    exit()
+
 
     if distributed.is_main_process():
         wandb.login()
@@ -396,7 +395,7 @@ def main(args):
     model = SSLMetaArch(cfg).to(torch.device("cuda"))
     model.prepare_for_distributed_training()
 
-    logger.info("Model:\n{}".format(model))
+    #logger.info("Model:\n{}".format(model))
     if args.eval_only:
         iteration = (
             FSDPCheckpointer(model, save_dir=cfg.train.output_dir)
