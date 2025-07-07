@@ -275,5 +275,6 @@ class DataAugmentationDINO3d(object):
         except:
             print("="* 50)
             print(image.shape, image)
+            exit()
 
         return output, None
