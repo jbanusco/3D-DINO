@@ -30,15 +30,6 @@ import math
 
 logger = logging.getLogger("dinov2")
 
-class Printer(Crop):
-
-    def __call__(self, img_dict) :
-        return img_dict
-        image = img_dict["image"]
-        print(img_dict)
-        if image.shape[1] == 0 or image.shape[2] == 0 or image.shape[3] == 0:
-            print(image.shape, image.meta["filename_or_obj"])
-        return image_dict
 
 
 class RandomResizedCrop3d(Crop, Randomizable):
@@ -114,6 +105,7 @@ class RandomResizedCrop3d(Crop, Randomizable):
 
     def __call__(self, img, lazy=False):
         self.randomize(img.shape[1:])
+        print('crop')
         cropped = super().__call__(img=img, slices=self._slices)
         resized = interpolate(cropped.unsqueeze(0), size=self.size, mode=self.interpolation).squeeze(0)
         return resized
@@ -142,6 +134,7 @@ class CropForegroundSwapSliceDims(CropForeground):
         img_spacing = img_dict['spacing']
         img = img_dict['image']
         spatial_dims = img.shape[1:]
+        print('permut')
 
         # try getting from pixel spacing first, NOTE: verified that at least two dims have similar spacing in datasets
         if img_spacing is not None:
