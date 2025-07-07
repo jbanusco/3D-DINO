@@ -34,6 +34,7 @@ class Printer(Crop):
 
     def __call__(self, img_dict) :
         image = img_dict["image"]
+        print(img_dict)
         if image.shape[1] == 0 or image.shape[2] == 0 or image.shape[3] == 0:
             print(image.shape, image.meta["filename_or_obj"])
         return image_dict
