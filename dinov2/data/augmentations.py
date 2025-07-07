@@ -272,7 +272,7 @@ class DataAugmentationDINO3d(object):
             output["offsets"] = ()
 
             # "label" expected, but return nothing
-        except ZeroDivisionError:
+        except:
             print("="* 50)
             print(image.shape, image)
 
