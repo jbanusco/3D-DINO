@@ -443,9 +443,10 @@ class PrinterIfImageShapeIs0d:
             dict: The input data dictionary, unchanged.
         """
         for key in self.keys:
-            image = data[key]
-            if np.any(np.array(image.shape) == 0):
-                print(self.message, key, image.meta["filename_or_obj"])
+            if key in date.keys():
+                image = data[key]
+                if np.any(np.array(image.shape) == 0):
+                    print(self.message, key, image.meta["filename_or_obj"])
         return data
 
 if __name__ == "__main__":
