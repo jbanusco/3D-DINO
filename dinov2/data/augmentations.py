@@ -23,7 +23,7 @@ from monai.transforms import (
     CropForeground,
     ToTensor,
     Transform,
-    LoadImage,
+    LoadImaged,
 )
 from monai.data.utils import get_random_patch, get_valid_patch_size
 from torch.nn.functional import interpolate
