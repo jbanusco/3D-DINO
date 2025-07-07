@@ -446,7 +446,7 @@ class PrinterIfImageShapeIs0d:
             image = data[key]
                 #if np.any(np.array(image.shape) == 0):
             print(data.keys())
-        return data
+        return image
 
 if __name__ == "__main__":
     args = get_args_parser(add_help=True).parse_args()
