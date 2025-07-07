@@ -238,7 +238,7 @@ def do_train(cfg, model, resume=False):
                     keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
                 ),  # replace NaNs with mean
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
-                #PrinterIfImageShapeIs0d(keys=["image"], message="Image shape:"),
+                PrinterIfImageShapeIs0d(keys=["image"], message="Image shape:"),
                 CropForegroundSwapSliceDims(select_fn=lambda x: x > -100000),
                 DataAugmentationDINO3d(
                     cfg.crops.global_crops_in_slice_scale,
@@ -443,11 +443,12 @@ class PrinterIfImageShapeIs0d:
         Returns:
             dict: The input data dictionary, unchanged.
         """
+        for key in self.keys:
+            image = data[key]
+            if image.shape[1] == 0 or image.shape[2] == 0 or image.shape[3] == 0:
+                print(self.message, key, image.meta["filename_or_obj"])
+        return data
 
-        image = data[key]
-                #if np.any(np.array(image.shape) == 0):
-        print(data.keys())
-        return image
 
 if __name__ == "__main__":
     args = get_args_parser(add_help=True).parse_args()
