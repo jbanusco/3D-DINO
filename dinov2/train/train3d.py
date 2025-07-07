@@ -215,7 +215,7 @@ def do_train(cfg, model, resume=False):
                     keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
                 ),  # replace NaNs with mean
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
-                CropForegroundSwapSliceDims(select_fn=lambda x: torch.ones_like(x, dtype=bool)),
+                CropForegroundSwapSliceDims(select_fn=lambda x: x > -1),
                 DataAugmentationDINO3d(
                     cfg.crops.global_crops_in_slice_scale,
                     cfg.crops.global_crops_cross_slice_scale,
