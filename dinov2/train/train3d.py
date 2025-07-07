@@ -208,7 +208,7 @@ def do_train(cfg, model, resume=False):
         return x
 
     # Compose the loading and intensity scaling here to cache transforms in monai persistent dataset
-    """
+
     data_transform = Compose(
             [
                 LoadImaged(keys=["image"], ensure_channel_first=True),
@@ -251,7 +251,7 @@ def do_train(cfg, model, resume=False):
                 )
             ]
         )
-
+    """
     # data collate
     collate_fn = partial(
         collate_data_and_cast,
