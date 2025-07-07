@@ -207,6 +207,7 @@ def do_train(cfg, model, resume=False):
         return x
 
     # Compose the loading and intensity scaling here to cache transforms in monai persistent dataset
+
     data_transform = Compose(
             [
                 LoadImaged(keys=["image"], ensure_channel_first=True),
@@ -387,3 +388,135 @@ def main(args):
 if __name__ == "__main__":
     args = get_args_parser(add_help=True).parse_args()
     main(args)
+
+
+class Printerd:
+    """
+
+    A callable class to print information about specific keys in input data.
+
+    Args:
+
+        keys (list): List of keys corresponding to the data to be printed.
+
+        message (str, optional): Optional message to be printed before the key information.
+
+    Returns:
+
+        dict: The input data dictionary, unchanged.
+
+    Example:
+>>> printer = Printerd(keys=["image", "label"], message="Info:")
+>>> data = {"image": np.random.rand(64, 64), "label": np.random.randint(0, 2, (64, 64))}
+>>> _ = printer(data)
+
+        Info: image float64
+
+        Info: label int64
+
+    """
+
+    def __init__(self, keys: list, message: str = ""):
+        """
+
+        Initialize the Printerd object with the specified keys and optional message.
+
+        Args:
+
+            keys (list): List of keys corresponding to the data to be printed.
+
+            message (str, optional): Optional message to be printed before the key information.
+
+        """
+
+        self.keys = keys
+
+        self.message = message
+
+    def __call__(self, data: dict) -> dict:
+        """
+
+        Call method to print information about the specified keys in the input data.
+
+        Args:
+
+            data (dict): Input data dictionary containing the keys to be printed.
+
+        Returns:
+
+            dict: The input data dictionary, unchanged.
+
+        """
+
+        for key in self.keys:
+            image = data[key]
+
+            print(self.message, key, image)
+
+        return data
+
+
+class OtherPrinterd:
+    """
+
+    A callable class to print information about specific keys in input data.
+
+    Args:
+
+        keys (list): List of keys corresponding to the data to be printed.
+
+        message (str, optional): Optional message to be printed before the key information.
+
+    Returns:
+
+        dict: The input data dictionary, unchanged.
+
+    Example:
+>>> printer = Printerd(keys=["image", "label"], message="Info:")
+>>> data = {"image": np.random.rand(64, 64), "label": np.random.randint(0, 2, (64, 64))}
+>>> _ = printer(data)
+
+        Info: image float64
+
+        Info: label int64
+
+    """
+
+    def __init__(self, keys: list, message: str = ""):
+        """
+
+        Initialize the Printerd object with the specified keys and optional message.
+
+        Args:
+
+            keys (list): List of keys corresponding to the data to be printed.
+
+            message (str, optional): Optional message to be printed before the key information.
+
+        """
+
+        self.keys = keys
+
+        self.message = message
+
+    def __call__(self, data: dict) -> dict:
+        """
+
+        Call method to print information about the specified keys in the input data.
+
+        Args:
+
+            data (dict): Input data dictionary containing the keys to be printed.
+
+        Returns:
+
+            dict: The input data dictionary, unchanged.
+
+        """
+
+        for key in self.keys:
+            image = data[key]
+
+            print(self.message, key, image.shape)
+
+        return data

@@ -148,7 +148,7 @@ class CropForegroundSwapSliceDims(CropForeground):
         # crop foreground
         img = super().__call__(img, mode, lazy, **pad_kwargs)
 
-        if 0 in img.shape[1:]:
+        if img.shape[1]==0 or img.shape[1]==0 or img.shape[2]==0:
             print(img.shape)
             print(img_dict['image'])
             exit()
