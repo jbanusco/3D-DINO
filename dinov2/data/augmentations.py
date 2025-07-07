@@ -22,6 +22,8 @@ from monai.transforms import (
     RandGibbsNoise,
     CropForeground,
     ToTensor,
+    Transform,
+    LoadImage,
 )
 from monai.data.utils import get_random_patch, get_valid_patch_size
 from torch.nn.functional import interpolate
@@ -30,12 +32,15 @@ import math
 
 logger = logging.getLogger("dinov2")
 
-class Printer(monai.transforms.Transform):
+class Printer(Transform):
+
+    def __init__(self, **kwargs):
+
+        self.load = LoadImaged(keys=["image"], ensure_channel_first=True)
 
     def __call__(self, data):
 
-        img_path = data["img_path"]
-        img = LoadImaged(img_path)
+        img = self.load(data)
 
         if img.shape[1]==0 or img.shape[2]==0 or img.shape[3]==0:
 
