@@ -550,12 +550,7 @@ class PrinterIfImageShapeIs0d:
         keys (list): List of keys corresponding to the data to be printed.
         message (str, optional): Optional message to be printed before the key information.
     Returns:
-        dict: The input data dictionary, unchanged.
-
-    Example:
->>> printer = Printerd(keys=["image", "label"], message="Info:")
->>> data = {"image": np.random.rand(64, 64), "label": np.random.randint(0, 2, (64, 64))}
->>> _ = printer(data)
+        dict: The input data dictionary, unchang
         Info: image float64
         Info: label int64
     """
