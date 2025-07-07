@@ -201,7 +201,6 @@ def do_train(cfg, model, resume=False):
 
     def random_select_time(x):
         # if time axis exists, select random time slice
-        logger.info(x.shape)
         if x.shape[0] > 1:
             t = random.randint(0, x.shape[0] - 1)
             x = x[t:t + 1]
@@ -211,7 +210,7 @@ def do_train(cfg, model, resume=False):
 
     data_transform = Compose(
             [
-                Printer(),
+                #Printer(),
                 LoadImaged(keys=["image"], ensure_channel_first=True),
                 Lambdad(keys=["image"], func=random_select_time),
                 Lambdad(
