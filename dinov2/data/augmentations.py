@@ -40,7 +40,7 @@ class Printer(Transform):
 
     def __call__(self, data):
 
-        img = self.load(data)
+        img = self.load(data)["image"]
 
         if img.shape[1]==0 or img.shape[2]==0 or img.shape[3]==0:
 
