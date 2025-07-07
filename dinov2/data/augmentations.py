@@ -103,9 +103,13 @@ class RandomResizedCrop3d(Crop, Randomizable):
         self._slices = get_random_patch(img_size, valid_size, self.R)
 
     def __call__(self, img, lazy=False):
-        self.randomize(img.shape[1:])
-        cropped = super().__call__(img=img, slices=self._slices)
-        resized = interpolate(cropped.unsqueeze(0), size=self.size, mode=self.interpolation).squeeze(0)
+        try:
+            self.randomize(img.shape[1:])
+            cropped = super().__call__(img=img, slices=self._slices)
+            resized = interpolate(cropped.unsqueeze(0), size=self.size, mode=self.interpolation).squeeze(0)
+        except ZeroDivisionError:
+            print("="*50)
+            print(image.shape)
         return resized
 
 
@@ -249,30 +253,27 @@ class DataAugmentationDINO3d(object):
 
     def __call__(self, image):
         output = {}
-        try:
-            # image = self.load_and_normalize(image_path)
+        # image = self.load_and_normalize(image_path)
 
-            # global crops:
-            im1_base = self.geometric_augmentation_global(image)
-            global_crop_1 = self.global_transfo1(im1_base)
+        # global crops:
+        im1_base = self.geometric_augmentation_global(image)
+        global_crop_1 = self.global_transfo1(im1_base)
 
-            im2_base = self.geometric_augmentation_global(image)
-            global_crop_2 = self.global_transfo2(im2_base)
+        im2_base = self.geometric_augmentation_global(image)
+        global_crop_2 = self.global_transfo2(im2_base)
 
-            output["global_crops"] = [global_crop_1, global_crop_2]
+        output["global_crops"] = [global_crop_1, global_crop_2]
 
-            # global crops for teacher:
-            output["global_crops_teacher"] = [global_crop_1, global_crop_2]
+        # global crops for teacher:
+        output["global_crops_teacher"] = [global_crop_1, global_crop_2]
 
-            # local crops:
-            local_crops = [
-                self.local_transfo(self.geometric_augmentation_local(image)) for _ in range(self.local_crops_number)
-            ]
-            output["local_crops"] = local_crops
-            output["offsets"] = ()
+        # local crops:
+        local_crops = [
+            self.local_transfo(self.geometric_augmentation_local(image)) for _ in range(self.local_crops_number)
+        ]
+        output["local_crops"] = local_crops
+        output["offsets"] = ()
 
-            # "label" expected, but return nothing
-        except ZeroDivisionError:
-            print("="*50)
-            print(image.shape)
+        # "label" expected, but return nothing
+
         return output, None
