@@ -64,6 +64,28 @@ For python-based LazyConfig, use "path.key=value".
         help="path to cache directory for monai persistent dataset"
     )
 
+    parser.add_argument(
+        "--entity",
+        default='benoit-gerin',
+        type=str,
+        help="wandb entity"
+    )
+
+    parser.add_argument(
+        "--project",
+        default='fomo2025',
+        type=str,
+        help="wandb project"
+    )
+
+    parser.add_argument(
+        "--mode",
+        default='disabled',
+        type=str,
+        choices=['disabled', 'online'],
+        help="wandb mode"
+    )
+
     return parser
 
 
@@ -305,6 +327,16 @@ def do_train(cfg, model, resume=False):
         metric_logger.update(current_batch_size=current_batch_size)
         metric_logger.update(total_loss=losses_reduced, **loss_dict_reduced)
 
+
+        if distributed.is_main_process():
+            wandb.log({"train loss": losses_reduced,
+                       "learning rate": lr,
+                       "weight decay": wd,
+                       "momentum": mom,
+                       "last layer lr": last_layer_lr,
+                       "current batch size": current_batch_size,
+                       })
+
         # checkpointing and testing
         if cfg.evaluation.eval_period_iterations > 0 and (iteration + 1) % cfg.evaluation.eval_period_iterations == 0:
             do_test(cfg, model, f"training_{iteration}")
@@ -320,6 +352,21 @@ def do_train(cfg, model, resume=False):
 
 def main(args):
     cfg = setup_3d(args)
+
+
+    if distributed.is_main_process():
+        wandb.login()
+        mode = 'online' if args.wandb else 'disabled'
+        run = wandb.init(
+            # Set the project where this run will be logged
+            entity=args.entity,
+            project=args.project,
+            # Track hyperparameters and run metadata
+            config=cfg,
+            mode=args.mode,
+            # name=cfg.LOGGER.TAG
+        )
+
 
     model = SSLMetaArch(cfg).to(torch.device("cuda"))
     model.prepare_for_distributed_training()
