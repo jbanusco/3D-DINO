@@ -228,7 +228,7 @@ def do_train(cfg, model, resume=False):
                 )
             ]
         )
-
+    """
     data_transform = Compose(
             [
                 LoadImaged(keys=["image"], ensure_channel_first=True),
@@ -250,6 +250,7 @@ def do_train(cfg, model, resume=False):
                 )
             ]
         )
+    """
     # data collate
     collate_fn = partial(
         collate_data_and_cast,
