@@ -201,6 +201,7 @@ def do_train(cfg, model, resume=False):
 
     def random_select_time(x):
         # if time axis exists, select random time slice
+        print(x.shape)
         if x.shape[0] > 1:
             t = random.randint(0, x.shape[0] - 1)
             x = x[t:t + 1]
