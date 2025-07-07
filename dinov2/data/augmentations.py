@@ -144,7 +144,11 @@ class CropForegroundSwapSliceDims(CropForeground):
 
         # swap slice dims
         img = img.permute(*perm)
-
+        if img.shape[-1] == 0:
+            print("=" * 50)
+            print(img.shape)
+            print(img_dict['image'])
+            exit()
         # crop foreground
         return super().__call__(img, mode, lazy, **pad_kwargs)
 
@@ -249,32 +253,29 @@ class DataAugmentationDINO3d(object):
 
     def __call__(self, image):
         output = {}
-        try :
-            # image = self.load_and_normalize(image_path)
 
-            # global crops:
-            im1_base = self.geometric_augmentation_global(image)
-            global_crop_1 = self.global_transfo1(im1_base)
+        # image = self.load_and_normalize(image_path)
 
-            im2_base = self.geometric_augmentation_global(image)
-            global_crop_2 = self.global_transfo2(im2_base)
+        # global crops:
+        im1_base = self.geometric_augmentation_global(image)
+        global_crop_1 = self.global_transfo1(im1_base)
 
-            output["global_crops"] = [global_crop_1, global_crop_2]
+        im2_base = self.geometric_augmentation_global(image)
+        global_crop_2 = self.global_transfo2(im2_base)
 
-            # global crops for teacher:
-            output["global_crops_teacher"] = [global_crop_1, global_crop_2]
+        output["global_crops"] = [global_crop_1, global_crop_2]
 
-            # local crops:
-            local_crops = [
-                self.local_transfo(self.geometric_augmentation_local(image)) for _ in range(self.local_crops_number)
-            ]
-            output["local_crops"] = local_crops
-            output["offsets"] = ()
+        # global crops for teacher:
+        output["global_crops_teacher"] = [global_crop_1, global_crop_2]
 
-            # "label" expected, but return nothing
-        except:
-            print("="* 50)
-            print(image.shape, image)
-            exit()
+        # local crops:
+        local_crops = [
+            self.local_transfo(self.geometric_augmentation_local(image)) for _ in range(self.local_crops_number)
+        ]
+        output["local_crops"] = local_crops
+        output["offsets"] = ()
+
+        # "label" expected, but return nothing
+
 
         return output, None
