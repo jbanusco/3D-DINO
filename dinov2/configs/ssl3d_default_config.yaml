@@ -67,7 +67,7 @@ train:
   seed: 0
   num_workers: 32
   OFFICIAL_EPOCH_LENGTH: 1250
-  cache_dataset: true
+  cache_dataset: false
   centering: sinkhorn_knopp
 student:
   arch: vit_large_3d
