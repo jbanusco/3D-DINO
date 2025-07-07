@@ -362,7 +362,7 @@ def main(args):
             entity=args.entity,
             project=args.project,
             # Track hyperparameters and run metadata
-            config=cfg,
+            config=args,
             mode=args.mode,
             # name=cfg.LOGGER.TAG
         )
