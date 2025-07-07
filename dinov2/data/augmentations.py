@@ -251,8 +251,7 @@ class DataAugmentationDINO3d(object):
         output = {}
 
         # image = self.load_and_normalize(image_path)
-        print("="*40)
-        print(image.shape)
+
         # global crops:
         im1_base = self.geometric_augmentation_global(image)
         global_crop_1 = self.global_transfo1(im1_base)
