@@ -61,13 +61,13 @@ ibot:
 train:
   batch_size_per_gpu: 128
   data_min_axis_size: 24
-  dataset_path: '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
+  dataset_path: "/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_1000.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
   saveckp_freq: 20
   seed: 0
   num_workers: 32
   OFFICIAL_EPOCH_LENGTH: 1250
-  cache_dataset: false
+  cache_dataset: True
   centering: sinkhorn_knopp
 student:
   arch: vit_large_3d
