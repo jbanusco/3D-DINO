@@ -444,7 +444,7 @@ class PrinterIfImageShapeIs0d:
         """
         for key in self.keys:
             image = data[key]
-            if image.shape[1] == 0 or image.shape[2] == 0 or image.shape[3] == 0:
+            if np.any(np.array(image.shape) == 0):
                 print(self.message, key, image.meta["filename_or_obj"])
         return data
 
