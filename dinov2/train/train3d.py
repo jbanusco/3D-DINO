@@ -17,7 +17,7 @@ from fvcore.common.checkpoint import PeriodicCheckpointer
 import torch
 
 from dinov2.data import SamplerType, make_data_loader, make_dataset_3d
-from dinov2.data import collate_data_and_cast, DataAugmentationDINO3d, MaskingGenerator3d, CropForegroundSwapSliceDims
+from dinov2.data import collate_data_and_cast, DataAugmentationDINO3d, MaskingGenerator3d, CropForegroundSwapSliceDims, Printer
 import dinov2.distributed as distributed
 from dinov2.fsdp import FSDPCheckpointer
 from dinov2.logging import MetricLogger
@@ -238,7 +238,7 @@ def do_train(cfg, model, resume=False):
                     keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
                 ),  # replace NaNs with mean
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
-                PrinterIfImageShapeIs0d(keys=["image"], message="Image shape:"),
+                Printer(),
                 CropForegroundSwapSliceDims(select_fn=lambda x: x > -100000),
                 DataAugmentationDINO3d(
                     cfg.crops.global_crops_in_slice_scale,
@@ -410,44 +410,7 @@ def main(args):
 
 
 
-class PrinterIfImageShapeIs0d:
-    """
-    A callable class to print information about specific keys in input data.
-    Args:
-        keys (list): List of keys corresponding to the data to be printed.
-        message (str, optional): Optional message to be printed before the key information.
-    Returns:
-        dict: The input data dictionary, unchang
-        Info: image float64
-        Info: label int64
-    """
 
-    def __init__(self, keys: list, message: str = ""):
-        """
-        Initialize the Printerd object with the specified keys and optional message.
-
-        Args:
-            keys (list): List of keys corresponding to the data to be printed.
-            message (str, optional): Optional message to be printed before the key information.
-        """
-        self.keys = keys
-        self.message = message
-
-    def __call__(self, data: dict) -> dict:
-        """
-        Call method to print information about the specified keys in the input data.
-
-        Args:
-            data (dict): Input data dictionary containing the keys to be printed.
-
-        Returns:
-            dict: The input data dictionary, unchanged.
-        """
-        for key in self.keys:
-            image = data[key]
-            if image.shape[1] == 0 or image.shape[2] == 0 or image.shape[3] == 0:
-                print(self.message, key, image.meta["filename_or_obj"])
-        return data
 
 
 if __name__ == "__main__":
