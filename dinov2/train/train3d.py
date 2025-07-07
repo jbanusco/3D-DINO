@@ -357,7 +357,6 @@ def main(args):
 
     if distributed.is_main_process():
         wandb.login()
-        mode = 'online' if args.wandb else 'disabled'
         run = wandb.init(
             # Set the project where this run will be logged
             entity=args.entity,
