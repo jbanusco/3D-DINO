@@ -109,7 +109,7 @@ class RandomResizedCrop3d(Crop, Randomizable):
             resized = interpolate(cropped.unsqueeze(0), size=self.size, mode=self.interpolation).squeeze(0)
         except ZeroDivisionError:
             print("="*50)
-            print(image.shape)
+            print(img.shape)
         return resized
 
 
