@@ -103,14 +103,9 @@ class RandomResizedCrop3d(Crop, Randomizable):
         self._slices = get_random_patch(img_size, valid_size, self.R)
 
     def __call__(self, img, lazy=False):
-        try:
-            self.randomize(img.shape[1:])
-            cropped = super().__call__(img=img, slices=self._slices)
-            resized = interpolate(cropped.unsqueeze(0), size=self.size, mode=self.interpolation).squeeze(0)
-            print(img.shape)
-        except ZeroDivisionError:
-            print("="*50)
-            print(img.shape)
+        self.randomize(img.shape[1:])
+        cropped = super().__call__(img=img, slices=self._slices)
+        resized = interpolate(cropped.unsqueeze(0), size=self.size, mode=self.interpolation).squeeze(0)
         return resized
 
 
