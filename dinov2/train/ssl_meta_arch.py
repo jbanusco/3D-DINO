@@ -181,6 +181,9 @@ class SSLMetaArch(nn.Module):
         global_crops = images["collated_global_crops"].cuda(non_blocking=True)
         local_crops = images["collated_local_crops"].cuda(non_blocking=True)
 
+        print("input")
+        print(torch.isnan(global_crops).sum(), torch.isnan(local_crops).sum())
+
         masks = images["collated_masks"].cuda(non_blocking=True)
         mask_indices_list = images["mask_indices_list"].cuda(non_blocking=True)
         n_masked_patches_tensor = images["n_masked_patches"].cuda(non_blocking=True)
@@ -210,6 +213,9 @@ class SSLMetaArch(nn.Module):
             _dim = ibot_teacher_patch_tokens.shape[-1]
             n_cls_tokens = teacher_cls_tokens.shape[0]
 
+            print("output")
+            print(torch.isnan(teacher_cls_tokens).sum())
+
             if do_ibot and not self.ibot_separate_head:
                 buffer_tensor_teacher = ibot_teacher_patch_tokens.new_zeros(upperbound + n_cls_tokens, _dim)
                 buffer_tensor_teacher[:n_cls_tokens].copy_(teacher_cls_tokens)
@@ -224,6 +230,7 @@ class SSLMetaArch(nn.Module):
                 masked_teacher_patch_tokens_after_head = tokens_after_head[
                     n_cls_tokens : n_cls_tokens + n_masked_patches
                 ]
+
             elif do_ibot and self.ibot_separate_head:
                 buffer_tensor_teacher = ibot_teacher_patch_tokens.new_zeros(upperbound, _dim)
                 torch.index_select(
@@ -236,6 +243,7 @@ class SSLMetaArch(nn.Module):
                 masked_teacher_patch_tokens_after_head = self.teacher.ibot_head(buffer_tensor_teacher)[
                     :n_masked_patches
                 ]
+                print(torch.isnan(teacher_cls_tokens_after_head).sum(), torch.isnan(masked_teacher_patch_tokens_after_head.sum()))
             else:
                 teacher_cls_tokens_after_head = self.teacher.dino_head(teacher_cls_tokens)
                 masked_teacher_ibot_softmaxed_centered = None
