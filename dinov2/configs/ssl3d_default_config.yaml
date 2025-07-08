@@ -63,7 +63,7 @@ train:
   data_min_axis_size: 24
   dataset_path:  "/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_filtered_24.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
-  saveckp_freq: 20
+  saveckp_freq: 5
   seed: 0
   num_workers: 32
   OFFICIAL_EPOCH_LENGTH: 1250
@@ -92,12 +92,12 @@ optim:
   epochs: 100
   weight_decay: 0.04
   weight_decay_end: 0.4
-  base_lr: 0.002  # learning rate for a batch size of 1024
+  base_lr: 0.00002 #0.002  # learning rate for a batch size of 1024
   lr: 0.  # will be set after applying scaling rule
   warmup_epochs: 10
   min_lr: 1.0e-06
   clip_grad: 3.0
-  freeze_last_layer_epochs: 1
+  freeze_last_layer_epochs: 1  # 1
   scaling_rule: sqrt_wrt_1024
   patch_embed_lr_mult: 0.2
   layerwise_decay: 0.9
