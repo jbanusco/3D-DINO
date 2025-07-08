@@ -315,6 +315,7 @@ def do_train(cfg, model, resume=False):
 
         # compute losses
         optimizer.zero_grad(set_to_none=True)
+        print(data)
         loss_dict = model.forward_backward(data, teacher_temp=teacher_temp)
 
         # clip gradients
