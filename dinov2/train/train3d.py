@@ -215,6 +215,7 @@ def do_train(cfg, model, resume=False):
                 Lambdad(
                     keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
                 ),  # replace NaNs with mean
+                Printer(),
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.005, upper=0.995, b_min=-1, b_max=1, clip=True),
                 CropForegroundSwapSliceDims(select_fn=lambda x: x > -1),
                 DataAugmentationDINO3d(

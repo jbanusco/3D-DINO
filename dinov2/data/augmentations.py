@@ -28,6 +28,7 @@ from monai.transforms import (
 from monai.data.utils import get_random_patch, get_valid_patch_size
 from torch.nn.functional import interpolate
 import math
+import numpy as np
 
 
 logger = logging.getLogger("dinov2")
@@ -42,9 +43,7 @@ class Printer(Transform):
 
         img = self.load(data)["image"]
 
-        if img.shape[1]==0 or img.shape[2]==0 or img.shape[3]==0:
-
-            print(data)
+        print(np.min(img), np.max(img))
 
 
         return data
