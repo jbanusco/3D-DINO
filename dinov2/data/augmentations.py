@@ -270,22 +270,22 @@ class DataAugmentationDINO3d(object):
         output = {}
 
         # image = self.load_and_normalize(image_path)
-        if torch.isnan(image).sum().item() == 0:
+        if torch.isnan(image).sum().item() != 0:
             print("image ", torch.isnan(image).sum().item())
         # global crops:
         im1_base = self.geometric_augmentation_global(image)
 
-        if torch.isnan(im1_base).sum().item() == 0:
+        if torch.isnan(im1_base).sum().item() != 0:
             print("im1_base ", torch.isnan(im1_base).sum().item())
 
         global_crop_1 = self.global_transfo1(im1_base)
-        if torch.isnan(global_crop_1).sum().item() == 0:
+        if torch.isnan(global_crop_1).sum().item() != 0:
             print("global_crop_1 ", torch.isnan(global_crop_1).sum().item())
         im2_base = self.geometric_augmentation_global(image)
-        if torch.isnan(im2_base).sum().item() == 0:
+        if torch.isnan(im2_base).sum().item() != 0:
             print("im2_base ", torch.isnan(im2_base).sum().item())
         global_crop_2 = self.global_transfo2(im2_base)
-        if torch.isnan(global_crop_2).sum().item() == 0:
+        if torch.isnan(global_crop_2).sum().item() != 0:
             print("global_crop_2 ", torch.isnan(global_crop_2).sum().item())
 
         output["global_crops"] = [global_crop_1, global_crop_2]
