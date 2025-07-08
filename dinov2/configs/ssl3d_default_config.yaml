@@ -83,7 +83,7 @@ student:
   proj_bias: true
   ffn_bias: true
 teacher:
-  momentum_teacher: 0.999  # 0.992
+  momentum_teacher: 1.0  # 0.992
   final_momentum_teacher: 1
   warmup_teacher_temp: 0.04
   teacher_temp: 0.07
