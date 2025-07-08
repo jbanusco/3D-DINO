@@ -270,17 +270,23 @@ class DataAugmentationDINO3d(object):
         output = {}
 
         # image = self.load_and_normalize(image_path)
-        print("input dino")
-        print(torch.isnan(image).sum())
+        if torch.isnan(image).sum().item() == 0:
+            print("image ", torch.isnan(image).sum())
         # global crops:
         im1_base = self.geometric_augmentation_global(image)
-        print(torch.isnan(im1_base).sum())
+
+        if torch.isnan(im1_base).sum().item() == 0:
+            print("im1_base ", torch.isnan(im1_base).sum())
+
         global_crop_1 = self.global_transfo1(im1_base)
-        print(torch.isnan(global_crop_1).sum())
+        if torch.isnan(global_crop_1).sum().item() == 0:
+            print("global_crop_1 ", torch.isnan(global_crop_1).sum())
         im2_base = self.geometric_augmentation_global(image)
-        print(torch.isnan(im2_base).sum())
+        if torch.isnan(im2_base).sum().item() == 0:
+            print("im2_base ", torch.isnan(im2_base).sum())
         global_crop_2 = self.global_transfo2(im2_base)
-        print(torch.isnan(global_crop_2).sum())
+        if torch.isnan(global_crop_2).sum().item() == 0:
+            print("global_crop_2 ", torch.isnan(global_crop_2).sum())
 
         output["global_crops"] = [global_crop_1, global_crop_2]
 
@@ -297,7 +303,9 @@ class DataAugmentationDINO3d(object):
         sum = 0
         for item in local_crops:
             sum += torch.isnan(item).sum()
-        print(sum)
+
+        if sum > 0:
+            print("local_crops ", sum)
         # "label" expected, but return nothing
 
 
