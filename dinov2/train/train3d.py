@@ -217,7 +217,7 @@ def do_train(cfg, model, resume=False):
                     keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
                 ),  # replace NaNs with mean
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
-                CropForegroundSwapSliceDims(select_fn=lambda x: x > -1),
+                CropForegroundSwapSliceDims(select_fn=lambda x: x > -1.00001),
                 DataAugmentationDINO3d(
                     cfg.crops.global_crops_in_slice_scale,
                     cfg.crops.global_crops_cross_slice_scale,
@@ -315,8 +315,9 @@ def do_train(cfg, model, resume=False):
 
         # compute losses
         optimizer.zero_grad(set_to_none=True)
-        print(data)
         loss_dict = model.forward_backward(data, teacher_temp=teacher_temp)
+
+        print(loss_dict)
 
         # clip gradients
         if fp16_scaler is not None:
