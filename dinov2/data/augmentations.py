@@ -29,6 +29,7 @@ from monai.data.utils import get_random_patch, get_valid_patch_size
 from torch.nn.functional import interpolate
 import math
 import numpy as np
+import torch
 
 
 logger = logging.getLogger("dinov2")
@@ -269,13 +270,17 @@ class DataAugmentationDINO3d(object):
         output = {}
 
         # image = self.load_and_normalize(image_path)
-
+        print("input dino")
+        print(torch.isnan(image).sum())
         # global crops:
         im1_base = self.geometric_augmentation_global(image)
+        print(torch.isnan(im1_base).sum())
         global_crop_1 = self.global_transfo1(im1_base)
-
+        print(torch.isnan(global_crop_1).sum())
         im2_base = self.geometric_augmentation_global(image)
+        print(torch.isnan(im2_base).sum())
         global_crop_2 = self.global_transfo2(im2_base)
+        print(torch.isnan(global_crop_2).sum())
 
         output["global_crops"] = [global_crop_1, global_crop_2]
 
@@ -289,6 +294,10 @@ class DataAugmentationDINO3d(object):
         output["local_crops"] = local_crops
         output["offsets"] = ()
 
+        sum = 0
+        for item in local_crops:
+            sum += torch.isnan(item).sum()
+        print(sum)
         # "label" expected, but return nothing
 
 
