@@ -41,7 +41,7 @@ class Printer(Transform):
 
     def __call__(self, data):
 
-        img = self.load(data)["image"]
+        img = data["image"]
 
         print(np.min(img), np.max(img))
 
