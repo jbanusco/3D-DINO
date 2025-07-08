@@ -207,51 +207,28 @@ def do_train(cfg, model, resume=False):
         return x
 
     # Compose the loading and intensity scaling here to cache transforms in monai persistent dataset
+    data_transform = Compose(
+            [
+                #Printer(),
+                LoadImaged(keys=["image"], ensure_channel_first=True),
+                Lambdad(keys=["image"], func=random_select_time),
+                Lambdad(
+                    keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
+                ),  # replace NaNs with mean
+                ScaleIntensityRangePercentilesd(keys=["image"], lower=0.005, upper=0.995, b_min=-1, b_max=1, clip=True),
+                CropForegroundSwapSliceDims(select_fn=lambda x: x > -1),
+                DataAugmentationDINO3d(
+                    cfg.crops.global_crops_in_slice_scale,
+                    cfg.crops.global_crops_cross_slice_scale,
+                    cfg.crops.local_crops_in_slice_scale,
+                    cfg.crops.local_crops_cross_slice_scale,
+                    cfg.crops.local_crops_number,
+                    global_crops_size=cfg.crops.global_crops_size,
+                    local_crops_size=cfg.crops.local_crops_size,
+                )
+            ]
+        )
 
-    data_transform = Compose(
-            [
-                #Printer(),
-                LoadImaged(keys=["image"], ensure_channel_first=True),
-                Lambdad(keys=["image"], func=random_select_time),
-                Lambdad(
-                    keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
-                ),  # replace NaNs with mean
-                ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
-                CropForegroundSwapSliceDims(select_fn=lambda x: x > -1.00001),
-                DataAugmentationDINO3d(
-                    cfg.crops.global_crops_in_slice_scale,
-                    cfg.crops.global_crops_cross_slice_scale,
-                    cfg.crops.local_crops_in_slice_scale,
-                    cfg.crops.local_crops_cross_slice_scale,
-                    cfg.crops.local_crops_number,
-                    global_crops_size=cfg.crops.global_crops_size,
-                    local_crops_size=cfg.crops.local_crops_size,
-                )
-            ]
-        )
-    """
-    data_transform = Compose(
-            [
-                LoadImaged(keys=["image"], ensure_channel_first=True),
-                Lambdad(keys=["image"], func=random_select_time),
-                Lambdad(
-                    keys=["image"], func=lambda x: torch.nan_to_num(x, torch.nanmean(x).item())
-                ),  # replace NaNs with mean
-                ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
-                #Printer(),
-                CropForegroundSwapSliceDims(select_fn=lambda x: x > -100000),
-                DataAugmentationDINO3d(
-                    cfg.crops.global_crops_in_slice_scale,
-                    cfg.crops.global_crops_cross_slice_scale,
-                    cfg.crops.local_crops_in_slice_scale,
-                    cfg.crops.local_crops_cross_slice_scale,
-                    cfg.crops.local_crops_number,
-                    global_crops_size=cfg.crops.global_crops_size,
-                    local_crops_size=cfg.crops.local_crops_size,
-                )
-            ]
-        )
-    """
     # data collate
     collate_fn = partial(
         collate_data_and_cast,
