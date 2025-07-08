@@ -278,7 +278,7 @@ def do_train(cfg, model, resume=False):
         max_iter,
         start_iter,
     ):
-        print(f'batch time: {time.time() - st}')
+        #print(f'batch time: {time.time() - st}')
         current_batch_size = data["collated_global_crops"].shape[0] / 2
         if iteration > max_iter:
             return
@@ -295,7 +295,6 @@ def do_train(cfg, model, resume=False):
         optimizer.zero_grad(set_to_none=True)
         loss_dict = model.forward_backward(data, teacher_temp=teacher_temp)
 
-        print(loss_dict)
 
         # clip gradients
         if fp16_scaler is not None:
