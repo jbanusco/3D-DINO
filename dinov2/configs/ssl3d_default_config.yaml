@@ -63,7 +63,7 @@ train:
   data_min_axis_size: 24
   dataset_path:  "/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_filtered_48_remove-nan.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
-  saveckp_freq: 5
+  saveckp_freq: 1
   seed: 0
   num_workers: 32
   OFFICIAL_EPOCH_LENGTH: 1250
