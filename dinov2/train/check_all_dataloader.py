@@ -256,13 +256,14 @@ def check_data(cfg):
         keys = list(data.keys())
         for key in keys:
             tensor = data[key]
-            n_nans = torch.sum(torch.isnan(tensor)).item()
-            n_bg = torch.sum(tensor == -1).item()
-            if n_nans > 0:
-                print("NaNs found in key: ", key, " with shape: ", tensor.shape, " and n_nans: ", n_nans, "    prop = ", n_nans / tensor.numel())
+            if isinstance(tensor, torch.Tensor):
+                n_nans = torch.sum(torch.isnan(tensor)).item()
+                n_bg = torch.sum(tensor == -1).item()
+                if n_nans > 0:
+                    print("NaNs found in key: ", key, " with shape: ", tensor.shape, " and n_nans: ", n_nans, "    prop = ", n_nans / tensor.numel())
 
-            if (n_bg / tensor.numel() > 0.9):
-                print("too much background in key: ", key, " with shape: ", tensor.shape, " and n_bg: ", n_bg, "    prop = ", n_bg / tensor.numel())
+                if (n_bg / tensor.numel() > 0.9):
+                    print("too much background in key: ", key, " with shape: ", tensor.shape, " and n_bg: ", n_bg, "    prop = ", n_bg / tensor.numel())
 
 
         iteration = iteration + 1
