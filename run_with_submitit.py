@@ -113,14 +113,13 @@ def main():
 
     #kwargs['slurm_partition'] = args.partition  # Note: you're setting this twice
     kwargs['slurm_job_name'] = args.job_name
-    kwargs['slurm_output'] = args.output  # Add slurm_ prefix
-    # kwargs['cpus_per_task'] = args.cpus_per_task  # This is generic, no prefix needed
-    kwargs['slurm_mem'] = args.mem  # Add slurm_ prefix
-    kwargs['slurm_time'] = args.time  # Add slurm_ prefix
-    kwargs['slurm_mail_user'] = args.mail_user  # Add slurm_ prefix
-    kwargs['slurm_mail_type'] = args.mail_type  # Add slurm_ prefix
-    kwargs['slurm_account'] = args.account  # Add slurm_ prefix
-
+    # Remove slurm_output - not a valid parameter
+    # kwargs['slurm_output'] = args.output
+    kwargs['slurm_mem'] = args.mem
+    kwargs['slurm_time'] = args.time
+    kwargs['slurm_mail_user'] = args.mail_user
+    kwargs['slurm_mail_type'] = args.mail_type
+    kwargs['slurm_account'] = args.account
 
     executor.update_parameters(
         mem_gb=240,
@@ -132,6 +131,7 @@ def main():
         # Below are cluster dependent parameters
         slurm_partition=partition,
         slurm_signal_delay_s=120,
+        stderr_to_stdout=True,  # Use this instead of output
         **kwargs
     )
 
