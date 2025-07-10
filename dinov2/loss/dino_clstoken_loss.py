@@ -67,9 +67,22 @@ class DINOLoss(nn.Module):
         # TODO: Use cross_entropy_distribution here
         total_loss = 0
         for s in student_output_list:
+            if torch.isnan(s).any() or torch.isinf(s).any():
+                print(f"Warning: NaN/Inf detected in student output")
+                print(s)
+                continue
             lsm = F.log_softmax(s / self.student_temp, dim=-1)
             for t in teacher_out_softmaxed_centered_list:
+                if torch.isnan(t).any() or torch.isinf(t).any():
+                    print(f"Warning: NaN/Inf detected in teacher output")
+                    print(t)
+                    continue
                 loss = torch.sum(t * lsm, dim=-1)
+                if torch.isnan(loss).any():
+                    print(f"Warning: NaN detected in loss computation")
+                    print(lsm)
+                    continue
+
                 total_loss -= loss.mean()
         return total_loss
 
