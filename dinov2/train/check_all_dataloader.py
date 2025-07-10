@@ -259,6 +259,10 @@ def check_data(cfg):
             if isinstance(tensor, torch.Tensor):
                 n_nans = torch.sum(torch.isnan(tensor)).item()
                 n_bg = torch.sum(tensor == -1).item()
+
+                if tensor.numel() < 25:
+                    print("Small tensor found in: ", key, " with shape: ", tensor.shape, " and numel: ", tensor.numel())
+
                 if n_nans > 0:
                     print("NaNs found in key: ", key, " with shape: ", tensor.shape, " and n_nans: ", n_nans, "    prop = ", n_nans / tensor.numel())
 
