@@ -48,8 +48,8 @@ def parse_args():
 
 def get_shared_folder() -> Path:
     user = os.getenv("USER")
-    if Path("/submitit/").is_dir():
-        p = Path(f"/submitit/{user}/experiments")
+    if Path("/gpfs/home/acad/ucl-elen/gerinb/submitit/").is_dir():
+        p = Path(f"/gpfs/home/acad/ucl-elen/gerinb/submitit/{user}/experiments")
         p.mkdir(exist_ok=True)
         return p
     raise RuntimeError("No shared folder available")
