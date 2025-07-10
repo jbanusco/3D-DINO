@@ -321,6 +321,14 @@ def do_train(cfg, model, resume=False):
 
         if math.isnan(sum(loss_dict_reduced.values())):
             logger.info("NaN detected")
+            local_crops = data["collated_local_crops"]
+            global_crops = data["collated_global_crops"]
+            masks = ["collated_masks"]
+            print("local crops:", local_crops.shape, "global crops:", global_crops.shape, "masks:", len(masks))
+            print("local_crops NaN:", torch.sum(torch.isnan(local_crops)).item(), "global_crops NaN:", torch.sum(torch.isnan(global_crops)).item())
+            for k, v in loss_dict.items():
+                print(f"loss {k}: {v} NaN:", torch.sum(torch.isnan(v)).item())
+
             raise AssertionError
         losses_reduced = sum(loss for loss in loss_dict_reduced.values())
 
