@@ -111,15 +111,15 @@ def main():
 
     """ Here, cluster specific parameters can be set."""
 
-    kwargs['partition'] = args.partition
-    kwargs['job_name'] = args.job_name
-    kwargs['output'] = args.output
-    #kwargs['cpus_per_task'] = args.cpus_per_task
-    kwargs['mem'] = args.mem
-    kwargs['time'] = args.time
-    kwargs['mail_user'] = args.mail_user
-    kwargs['mail_type'] = args.mail_type
-    kwargs['account'] = args.account
+    kwargs['slurm_partition'] = args.partition  # Note: you're setting this twice
+    kwargs['slurm_job_name'] = args.job_name
+    kwargs['slurm_output'] = args.output  # Add slurm_ prefix
+    # kwargs['cpus_per_task'] = args.cpus_per_task  # This is generic, no prefix needed
+    kwargs['slurm_mem'] = args.mem  # Add slurm_ prefix
+    kwargs['slurm_time'] = args.time  # Add slurm_ prefix
+    kwargs['slurm_mail_user'] = args.mail_user  # Add slurm_ prefix
+    kwargs['slurm_mail_type'] = args.mail_type  # Add slurm_ prefix
+    kwargs['slurm_account'] = args.account  # Add slurm_ prefix
 
 
     executor.update_parameters(
