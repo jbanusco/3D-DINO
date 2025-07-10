@@ -186,7 +186,7 @@ def do_train(cfg, model, resume=False):
 
     periodic_checkpointer = PeriodicCheckpointer(
         checkpointer,
-        period=3750,
+        period=1250,
         max_iter=max_iter,
         max_to_keep=3,
     )
