@@ -111,7 +111,7 @@ def main():
 
     """ Here, cluster specific parameters can be set."""
 
-    kwargs['slurm_partition'] = args.partition  # Note: you're setting this twice
+    #kwargs['slurm_partition'] = args.partition  # Note: you're setting this twice
     kwargs['slurm_job_name'] = args.job_name
     kwargs['slurm_output'] = args.output  # Add slurm_ prefix
     # kwargs['cpus_per_task'] = args.cpus_per_task  # This is generic, no prefix needed
