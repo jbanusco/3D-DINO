@@ -134,6 +134,7 @@ def main():
         nodes=nodes,
         timeout_min=timeout_min,  # max is 60 * 72
         # Below are cluster dependent parameters
+        slurm_gpus_per_node=num_gpus_per_node,
         slurm_partition=partition,
         slurm_signal_delay_s=120,
         stderr_to_stdout=True,  # Use this instead of output
