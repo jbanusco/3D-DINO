@@ -98,9 +98,13 @@ class Trainer(object):
 def main():
     args = parse_args()
     if args.output_dir == "":
-        args.output_dir = get_shared_folder() / "%j"
+        args.output_dir = get_shared_folder() / "job"
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     executor = submitit.AutoExecutor(folder=args.output_dir, slurm_max_num_timeout=30)
+
+    args.config_file = "dinov2/configs/lucia_ssl3d_default_config.yaml"
+    args.cache_dir = "/gpfs/projects/acad/danitim/gerinb/cell_profiling/data/FOMO25/cache"
+
 
     num_gpus_per_node = args.ngpus
     nodes = args.nodes
@@ -121,8 +125,6 @@ def main():
     kwargs['slurm_mail_type'] = args.mail_type
     kwargs['slurm_account'] = args.account
 
-    kwargs["config-file"] = "dinov2/configs/lucia_ssl3d_default_config.yaml"
-    kwargs["cache-dir"] = "/gpfs/projects/acad/danitim/gerinb/cell_profiling/data/FOMO25/cache"
 
     executor.update_parameters(
         mem_gb=240,
