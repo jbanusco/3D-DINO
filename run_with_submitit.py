@@ -121,6 +121,9 @@ def main():
     kwargs['slurm_mail_type'] = args.mail_type
     kwargs['slurm_account'] = args.account
 
+    kwargs["config-file"] = "dinov2/configs/lucia_ssl3d_default_config.yaml"
+    kwargs["cache-dir"] = "/gpfs/projects/acad/danitim/gerinb/cell_profiling/data/FOMO25/cache"
+
     executor.update_parameters(
         mem_gb=240,
         gpus_per_node=num_gpus_per_node,
