@@ -59,7 +59,7 @@ ibot:
   head_nlayers: 3
   head_hidden_dim: 2048
 train:
-  batch_size_per_gpu: 48
+  batch_size_per_gpu: 64
   data_min_axis_size: 24
   dataset_path:  "/gpfs/projects/acad/danitim/gerinb/cell_profiling/data/FOMO25/FOMO-MRI/preprocessed/dataset_lucia.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
