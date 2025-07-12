@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument('--job-name', default="3DINO", type=str)
     parser.add_argument("--output", default="/gpfs/home/acad/ucl-elen/gerinb/slurm/logs/%j_%x.out", type=str)
     parser.add_argument("--cpus-per-task", default=8, type=int)
-    parser.add_argument("--mem", default="240G", type=str)
+    parser.add_argument("--mem", default="220G", type=str)
     parser.add_argument("--time", default="1-23:59:58", type=str)
     parser.add_argument("--mail-user", default="benoit.gerin@uclouvain.be", type=str)
     parser.add_argument("--mail-type", default="ALL", type=str)
@@ -100,7 +100,7 @@ def main():
     if args.output_dir == "":
         args.output_dir = get_shared_folder() / "job"
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    executor = submitit.AutoExecutor(folder=args.output_dir, slurm_max_num_timeout=30)
+    executor = submitit.AutoExecutor(folder=args.output_dir, slurm_max_num_timeout=2)
 
     args.config_file = "dinov2/configs/lucia_ssl3d_default_config.yaml"
     args.cache_dir = "/gpfs/projects/acad/danitim/gerinb/cell_profiling/data/FOMO25/cache"
@@ -127,7 +127,7 @@ def main():
 
 
     executor.update_parameters(
-        mem_gb=240,
+        mem_gb=220,
         gpus_per_node=num_gpus_per_node,
         tasks_per_node=num_gpus_per_node,  # one task per GPU
         cpus_per_task=args.cpus_per_task,
