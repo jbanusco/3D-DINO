@@ -65,7 +65,7 @@ train:
   output_dir: ./output_test
   saveckp_freq: 1
   seed: 0
-  num_workers: 16
+  num_workers: 8
   OFFICIAL_EPOCH_LENGTH: 1250
   cache_dataset: True
   centering: sinkhorn_knopp
