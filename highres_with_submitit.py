@@ -102,7 +102,7 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     executor = submitit.AutoExecutor(folder=args.output_dir, slurm_max_num_timeout=2)
 
-    args.config_file = "dinov2/configs/lucia_vit3d_highres.yaml"
+    args.config_file = "dinov2/configs/train/lucia_vit3d_highres.yaml"
     args.cache_dir = "/gpfs/projects/acad/danitim/gerinb/cell_profiling/data/FOMO25/cache"
 
 
