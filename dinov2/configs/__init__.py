@@ -7,14 +7,18 @@
 import pathlib
 
 from omegaconf import OmegaConf
-
+from dinov2.distributed import get_global_size
 
 def load_config(config_name: str):
     config_filename = config_name + ".yaml"
     return OmegaConf.load(pathlib.Path(__file__).parent.resolve() / config_filename)
 
 
-dinov2_default_config_3d = load_config("ssl3d_default_config")
+size = get_global_size()
+if size == 8:
+    dinov2_default_config_3d = load_config("lucia_ssl3d_default_config")
+else:
+    dinov2_default_config_3d = load_config("ssl3d_default_config")
 
 
 def load_and_merge_config_3d(config_name: str):
