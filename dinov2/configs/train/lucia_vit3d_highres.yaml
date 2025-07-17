@@ -1,9 +1,9 @@
 train:
-  batch_size_per_gpu: 64
+  batch_size_per_gpu: 32
   data_min_axis_size: 48
   OFFICIAL_EPOCH_LENGTH: 125
 student:
-  full_pretrained_weights: '/Benson_DATA2/gerinb/FOMO2025/output/3dino/eval/training_124999/teacher_checkpoint.pth'
+  full_pretrained_weights: ''  # copy the zorglub weights to lucia first
 crops:
   global_crops_size: 112
   local_crops_size: 64
