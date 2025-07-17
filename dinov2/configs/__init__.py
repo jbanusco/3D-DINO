@@ -14,13 +14,9 @@ def load_config(config_name: str):
     return OmegaConf.load(pathlib.Path(__file__).parent.resolve() / config_filename)
 
 
-size = get_global_size()
-print("="*50, size)
-if size == 8:
-    dinov2_default_config_3d = load_config("lucia_ssl3d_default_config")
+dinov2_default_config_3d = load_config("lucia_ssl3d_default_config")
 
-else:
-    dinov2_default_config_3d = load_config("ssl3d_default_config")
+#dinov2_default_config_3d = load_config("ssl3d_default_config")
 
 
 def load_and_merge_config_3d(config_name: str):
