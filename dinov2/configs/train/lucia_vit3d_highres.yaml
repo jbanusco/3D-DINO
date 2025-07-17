@@ -3,7 +3,7 @@ train:
   data_min_axis_size: 48
   OFFICIAL_EPOCH_LENGTH: 125
 student:
-  full_pretrained_weights: ''  # copy the zorglub weights to lucia first
+  full_pretrained_weights: '/gpfs/home/acad/ucl-elen/gerinb/checkpoints/3dino/teacher_checkpoint.pth'  # copy the zorglub weights to lucia first
 crops:
   global_crops_size: 112
   local_crops_size: 64
