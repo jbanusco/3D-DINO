@@ -16,7 +16,7 @@ import wandb
 from fvcore.common.checkpoint import PeriodicCheckpointer
 import torch
 
-from dinov2.data import SamplerType, make_data_loader, make_dataset_3d
+from dinov2.data import SamplerType, make_data_loader, make_dataset_3d, DataAugmentationIJEPA3d
 from dinov2.data import collate_data_and_cast, DataAugmentationDINO3d, MaskingGenerator3d, CropForegroundSwapSliceDims, Printer, MaskCollator3D
 import dinov2.distributed as distributed
 from dinov2.fsdp import FSDPCheckpointer
@@ -199,6 +199,11 @@ def do_train(cfg, model, resume=False):
                 #Printer(),
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
                 CropForegroundSwapSliceDims(select_fn=lambda x: x > -1),
+                DataAugmentationIJEPA3d(
+                    cfg.crops.global_crops_in_slice_scale,
+                    cfg.crops.global_crops_cross_slice_scale,
+                    global_crops_size=cfg.input.size,
+                ),
             ]
         )
 

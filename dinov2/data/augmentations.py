@@ -363,8 +363,9 @@ class DataAugmentationIJEPA3d(object):
         # global crops:
         im1_base = self.geometric_augmentation_global(image)
 
-        output["image"] = global_crop_1
+        global_crop_1 = self.global_transfo1(im1_base)
 
+        output["images"] = global_crop_1
         output["offsets"] = ()
 
         # "label" expected, but return nothing
