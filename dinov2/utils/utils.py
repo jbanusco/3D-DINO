@@ -88,6 +88,38 @@ class CosineScheduler(object):
             return self.schedule[it]
 
 
+class LinearScheduler(object):
+    def __init__(self, base_value, final_value, total_iters, warmup_iters=0, start_warmup_value=0, freeze_iters=0):
+        super().__init__()
+        self.final_value = final_value
+        self.total_iters = total_iters
+
+        freeze_schedule = np.zeros((freeze_iters))
+
+        if warmup_iters > 0:
+            warmup_schedule = np.linspace(start_warmup_value, base_value, warmup_iters)
+        else:
+            warmup_schedule = np.array([])
+
+            # Main phase: linear decay from base_value to final_value
+        main_iters = total_iters - warmup_iters - freeze_iters
+        if main_iters > 0:
+            main_schedule = np.linspace(base_value, final_value, main_iters)
+        else:
+            main_schedule = np.array([])
+
+        # Concatenate all phases
+        self.schedule = np.concatenate((freeze_schedule, warmup_schedule, main_schedule))
+
+        assert len(self.schedule) == self.total_iters
+
+    def __getitem__(self, it):
+        if it >= self.total_iters:
+            return self.final_value
+        else:
+            return self.schedule[it]
+
+
 def has_batchnorms(model):
     bn_types = (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d, nn.SyncBatchNorm)
     for name, module in model.named_modules():

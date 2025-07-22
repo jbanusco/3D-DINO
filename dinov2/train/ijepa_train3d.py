@@ -17,12 +17,12 @@ from fvcore.common.checkpoint import PeriodicCheckpointer
 import torch
 
 from dinov2.data import SamplerType, make_data_loader, make_dataset_3d
-from dinov2.data import collate_data_and_cast, DataAugmentationDINO3d, MaskingGenerator3d, CropForegroundSwapSliceDims, Printer
+from dinov2.data import collate_data_and_cast, DataAugmentationDINO3d, MaskingGenerator3d, CropForegroundSwapSliceDims, Printer, MaskCollator3D
 import dinov2.distributed as distributed
 from dinov2.fsdp import FSDPCheckpointer
 from dinov2.logging import MetricLogger
 from dinov2.utils.config import setup_3d
-from dinov2.utils.utils import CosineScheduler
+from dinov2.utils.utils import CosineScheduler, LinearScheduler
 
 from dinov2.train.ssl_meta_arch import SSLMetaArch
 
@@ -91,7 +91,7 @@ For python-based LazyConfig, use "path.key=value".
 
 
 def build_optimizer(cfg, params_groups):
-    return torch.optim.AdamW(params_groups, betas=(cfg.optim.adamw_beta1, cfg.optim.adamw_beta2))
+    return torch.optim.AdamW(params_groups)
 
 
 def build_schedulers(cfg):
@@ -101,7 +101,7 @@ def build_schedulers(cfg):
         final_value=cfg.optim["min_lr"],
         total_iters=cfg.optim["epochs"] * OFFICIAL_EPOCH_LENGTH,
         warmup_iters=cfg.optim["warmup_epochs"] * OFFICIAL_EPOCH_LENGTH,
-        start_warmup_value=0,
+        start_warmup_value=cfg.optim["start_lr"],
     )
     wd = dict(
         base_value=cfg.optim["weight_decay"],
@@ -113,23 +113,11 @@ def build_schedulers(cfg):
         final_value=cfg.teacher["final_momentum_teacher"],
         total_iters=cfg.optim["epochs"] * OFFICIAL_EPOCH_LENGTH,
     )
-    teacher_temp = dict(
-        base_value=cfg.teacher["teacher_temp"],
-        final_value=cfg.teacher["teacher_temp"],
-        total_iters=cfg.teacher["warmup_teacher_temp_epochs"] * OFFICIAL_EPOCH_LENGTH,
-        warmup_iters=cfg.teacher["warmup_teacher_temp_epochs"] * OFFICIAL_EPOCH_LENGTH,
-        start_warmup_value=cfg.teacher["warmup_teacher_temp"],
-    )
+
 
     lr_schedule = CosineScheduler(**lr)
     wd_schedule = CosineScheduler(**wd)
-    momentum_schedule = CosineScheduler(**momentum)
-    teacher_temp_schedule = CosineScheduler(**teacher_temp)
-    last_layer_lr_schedule = CosineScheduler(**lr)
-
-    last_layer_lr_schedule.schedule[
-        : cfg.optim["freeze_last_layer_epochs"] * OFFICIAL_EPOCH_LENGTH
-    ] = 0  # mimicking the original schedules
+    momentum_schedule = LinearScheduler(**momentum)
 
     logger.info("Schedulers ready.")
 
@@ -188,16 +176,9 @@ def do_train(cfg, model, resume=False):
         checkpointer,
         period=1250,
         max_iter=max_iter,
-        max_to_keep=3,
+        max_to_keep=1,
     )
 
-    # setup data preprocessing
-    img_size = cfg.crops.global_crops_size
-    patch_size = cfg.student.patch_size
-    n_tokens = (img_size // patch_size) ** 3
-    mask_generator = MaskingGenerator3d(
-        input_size=(img_size // patch_size, img_size // patch_size, img_size // patch_size)
-    )
 
     def random_select_time(x):
         # if time axis exists, select random time slice
@@ -218,27 +199,22 @@ def do_train(cfg, model, resume=False):
                 #Printer(),
                 ScaleIntensityRangePercentilesd(keys=["image"], lower=0.05, upper=99.95, b_min=-1, b_max=1, clip=True),
                 CropForegroundSwapSliceDims(select_fn=lambda x: x > -1),
-                DataAugmentationDINO3d(
-                    cfg.crops.global_crops_in_slice_scale,
-                    cfg.crops.global_crops_cross_slice_scale,
-                    cfg.crops.local_crops_in_slice_scale,
-                    cfg.crops.local_crops_cross_slice_scale,
-                    cfg.crops.local_crops_number,
-                    global_crops_size=cfg.crops.global_crops_size,
-                    local_crops_size=cfg.crops.local_crops_size,
-                )
             ]
         )
 
     # data collate
-    collate_fn = partial(
-        collate_data_and_cast,
-        mask_ratio_tuple=cfg.ibot.mask_ratio_min_max,
-        mask_probability=cfg.ibot.mask_sample_probability,
-        n_tokens=n_tokens,
-        mask_generator=mask_generator,
-        dtype=inputs_dtype,
-    )
+    collate_fn = MaskCollator3D(
+            input_size=cfg.input.size,
+            patch_size=cfg.encoder.patch_size,
+            pred_mask_scale=cfg.input.pred_mask_scale,
+            enc_mask_scale=cfg.input.enc_mask_scale,
+            aspect_ratio= cfg.input.aspect_ratio,
+            depth_ratio=cfg.input.depth_ratio,
+            nenc= cfg.input.num_enc_masks,
+            npred= cfg.input.num_pred_masks,
+            allow_overlap=cfg.input.allow_overlap,
+            min_keep=cfg.input.min_keep,
+        )
 
     # setup data loader
     dataset = make_dataset_3d(
@@ -248,6 +224,7 @@ def do_train(cfg, model, resume=False):
         transform=data_transform
     )
     sampler_type = SamplerType.SHARDED_INFINITE
+
     data_loader = make_data_loader(
         dataset=dataset,
         batch_size=cfg.train.batch_size_per_gpu,
@@ -279,7 +256,7 @@ def do_train(cfg, model, resume=False):
         start_iter,
     ):
         #print(f'batch time: {time.time() - st}')
-        current_batch_size = data["collated_global_crops"].shape[0] / 2
+        current_batch_size = data["collated_batch"].shape[0]
         if iteration > max_iter:
             return
 
@@ -311,7 +288,7 @@ def do_train(cfg, model, resume=False):
             optimizer.step()
 
         # perform teacher EMA update
-        model.update_teacher(mom)
+        model.update_target_encoder(mom)
 
         # logging
         if distributed.get_global_size() > 1:
@@ -321,11 +298,6 @@ def do_train(cfg, model, resume=False):
 
         if math.isnan(sum(loss_dict_reduced.values())):
             logger.info("NaN detected")
-            local_crops = data["collated_local_crops"]
-            global_crops = data["collated_global_crops"]
-            masks = ["collated_masks"]
-            print("local crops:", local_crops.shape, "global crops:", global_crops.shape, "masks:", len(masks))
-            print("local_crops NaN:", torch.sum(torch.isnan(local_crops)).item(), "global_crops NaN:", torch.sum(torch.isnan(global_crops)).item())
             for k, v in loss_dict.items():
                 print(f"loss {k}: {v} NaN:", torch.sum(torch.isnan(v)).item())
 
@@ -335,7 +307,6 @@ def do_train(cfg, model, resume=False):
         metric_logger.update(lr=lr)
         metric_logger.update(wd=wd)
         metric_logger.update(mom=mom)
-        metric_logger.update(last_layer_lr=last_layer_lr)
         metric_logger.update(current_batch_size=current_batch_size)
         metric_logger.update(total_loss=losses_reduced, **loss_dict_reduced)
 
@@ -345,7 +316,6 @@ def do_train(cfg, model, resume=False):
                        "learning rate": lr,
                        "weight decay": wd,
                        "momentum": mom,
-                       "last layer lr": last_layer_lr,
                        "current batch size": current_batch_size,
                        })
 
@@ -379,7 +349,7 @@ def main(args):
         )
 
 
-    model = SSLMetaArch(cfg).to(torch.device("cuda"))
+    model = IJEPAMetaArch(cfg).to(torch.device("cuda"))
     model.prepare_for_distributed_training()
 
     #logger.info("Model:\n{}".format(model))

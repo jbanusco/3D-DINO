@@ -44,3 +44,6 @@ class MaskingGenerator3d:
         mask = np.zeros(shape=self.get_shape(), dtype=bool)
         self._mask(mask, num_masking_patches)
         return mask
+
+
+

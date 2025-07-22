@@ -298,4 +298,79 @@ class DataAugmentationDINO3d(object):
         return output, None
 
 
+class DataAugmentationIJEPA3d(object):
+
+    def __init__(
+        self,
+        global_crops_in_slice_scale,
+        global_crops_cross_slice_scale,
+        global_crops_size=96,
+    ):
+        self.global_crops_in_slice_scale = global_crops_in_slice_scale
+        self.global_crops_cross_slice_scale = global_crops_cross_slice_scale
+        self.global_crops_size = global_crops_size
+
+        logger.info("###################################")
+        logger.info("Using 3d data augmentation parameters:")
+        logger.info(f"global_crops_in_slice_scale: {global_crops_in_slice_scale}")
+        logger.info(f"global_crops_cross_slice_scale: {global_crops_cross_slice_scale}")
+        logger.info(f"global_crops_size: {global_crops_size}")
+        logger.info("###################################")
+
+        # random resized crop, flip and rot
+        self.geometric_augmentation_global = Compose(
+            [
+                RandomResizedCrop3d(
+                    global_crops_size,
+                    in_slice_scale=global_crops_in_slice_scale,
+                    cross_slice_scale=global_crops_cross_slice_scale
+                ),
+                RandFlip(prob=0.3, spatial_axis=[0]),
+                RandFlip(prob=0.3, spatial_axis=[1]),
+                RandFlip(prob=0.3, spatial_axis=[2]),
+                RandRotate90(prob=0.3, spatial_axes=(0, 1)),
+                RandRotate90(prob=0.3, spatial_axes=(1, 2)),
+                RandRotate90(prob=0.3, spatial_axes=(0, 2))
+            ]
+        )
+
+        # noise, contrast, blurring
+        gaussian_transforms = OneOf(
+            [
+                RandAdjustContrast(prob=0.8, gamma=(0.5, 2)),
+                RandGaussianNoise(prob=0.8, std=0.002),
+                RandHistogramShift(num_control_points=10, prob=0.8),
+            ]
+        )
+
+        global_transfo1_extra = OneOf(
+            [
+                RandGaussianSmooth(prob=1.0),
+                RandGaussianSharpen(prob=1.0),
+            ]
+        )
+
+
+
+
+        self.global_transfo1 = Compose([gaussian_transforms, global_transfo1_extra, ToTensor()])
+
+
+    def __call__(self, image):
+        output = {}
+
+        # image = self.load_and_normalize(image_path)
+        # global crops:
+        im1_base = self.geometric_augmentation_global(image)
+
+        output["image"] = global_crop_1
+
+        output["offsets"] = ()
+
+        # "label" expected, but return nothing
+
+
+        return output, None
+
+
 
