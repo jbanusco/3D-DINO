@@ -41,7 +41,7 @@ compute_precision:
         reduce_dtype: fp32
         buffer_dtype: fp32
 train:
-  batch_size_per_gpu: 128
+  batch_size_per_gpu: 8 # 128
   data_min_axis_size: 24
   dataset_path:  "/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
