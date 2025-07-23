@@ -247,12 +247,13 @@ class IJEPAVisionTransformer(nn.Module):
         num_patches = self.patch_embed.num_patches
 
         #self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim), requires_grad=False)
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim)) #, requires_grad=False)
+        """
         pos_embed = get_3d_sincos_pos_embed(self.pos_embed.shape[-1],
                                             int(self.patch_embed.num_patches ** (1.0/3.0)),
                                             cls_token=False)
         self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
-
+        """
         if drop_path_uniform is True:
             dpr = [drop_path_rate] * depth
         else:
