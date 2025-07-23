@@ -207,7 +207,7 @@ class IJEPAVisionTransformer(nn.Module):
         drop_path_rate=0.0,
         drop_path_uniform=False,
         init_values=None,  # for layerscale: None or 0 => no layerscale
-        embed_layer=PatchEmbed,
+        embed_layer=PatchEmbed3d,
         act_layer=nn.GELU,
         block_fn=Block,
         ffn_layer="mlp",
