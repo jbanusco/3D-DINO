@@ -515,7 +515,7 @@ class IJEPAMetaArch(nn.Module):
         # teacher output
         @torch.no_grad()
         def forward_target():
-            h = self.target_encoder(imgs)
+            h = self.target_encoder(imgs)["x_prenorm"]
             h = F.layer_norm(h, (h.size(-1),))  # normalize over feature-dim
             B = len(h)
             # -- create targets (masked regions of h)
@@ -524,7 +524,7 @@ class IJEPAMetaArch(nn.Module):
             return h
 
         def forward_context():
-            z = encoder(imgs, masks_enc)
+            z = encoder(imgs, masks_enc)["x_prenorm"]
             z = predictor(z, masks_enc, masks_pred)
             return z
 
