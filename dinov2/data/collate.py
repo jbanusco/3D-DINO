@@ -154,6 +154,9 @@ class MaskCollator(object):
         '''
         B = len(batch)
 
+        print(batch)
+        exit()
+
         collated_batch = torch.utils.data.default_collate(batch)
 
         seed = self.step()
