@@ -41,7 +41,7 @@ def build_model_from_cfg(cfg, only_teacher=False):
 
 
 
-def ijepa_build_model(args, only_teacher=False, img_size=224):
+def ijepa_build_model(args, img_size=224):
     args.arch = args.arch.removesuffix("_memeff")
     if "vit" in args.arch:
         vit_kwargs = dict(
@@ -85,4 +85,4 @@ def ijepa_build_model(args, only_teacher=False, img_size=224):
 
 
 def ijepa_build_model_from_cfg(cfg, only_teacher=False):
-    return ijepa_build_model(cfg.student, only_teacher=only_teacher, img_size=cfg.crops.global_crops_size)
+    return ijepa_build_model(cfg.encoder, img_size=cfg.input.size)
