@@ -524,8 +524,8 @@ class IJEPAMetaArch(nn.Module):
             return h
 
         def forward_context():
-            z = encoder(imgs, masks_enc)["x_prenorm"]
-            z = predictor(z, masks_enc, masks_pred)
+            z = self.encoder(imgs, masks_enc)["x_prenorm"]
+            z = self.predictor(z, masks_enc, masks_pred)
             return z
 
         def loss_fn(z, h):
