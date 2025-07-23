@@ -476,9 +476,8 @@ class IJEPATransformerPredictor(nn.Module):
         self.mask_token = nn.Parameter(torch.zeros(1, 1, predictor_embed_dim))
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
         # --
-        self.predictor_pos_embed = nn.Parameter(torch.zeros(1, num_patches, predictor_embed_dim),
-
-        """                                        requires_grad=False)
+        self.predictor_pos_embed = nn.Parameter(torch.zeros(1, num_patches, predictor_embed_dim)) #, requires_grad=False)
+        """
         predictor_pos_embed = get_3d_sincos_pos_embed(self.predictor_pos_embed.shape[-1],
                                                       int(num_patches**(1.0/3.0)),
                                                       cls_token=False)
