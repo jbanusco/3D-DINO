@@ -353,8 +353,6 @@ class MaskCollator3D(object):
         B = len(batch)
         collated_batch = torch.stack([batch[i][0]["images"] for i in range(B)])
 
-        print(collated_batch.shape)
-
         seed = self.step()
         g = torch.Generator()
         g.manual_seed(seed)
