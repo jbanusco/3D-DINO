@@ -454,7 +454,7 @@ class IJEPAMetaArch(nn.Module):
 
         encoder, predictor, embed_dim = ijepa_build_model_from_cfg(cfg)
 
-        encoder, predictor = encoder, predictor
+        #encoder, predictor = encoder, predictor
 
         logger.info(f"OPTIONS -- architecture : embed_dim: {embed_dim}")
 
@@ -463,7 +463,7 @@ class IJEPAMetaArch(nn.Module):
             logger.info(f"OPTIONS -- pretrained weights: loading from {cfg.encoder.pretrained_weights}")
             encoder.load_state_dict(chkpt["model"], strict=False)
 
-        target_encoder = copy.deepcopy(predictor)
+        target_encoder = copy.deepcopy(encoder)
 
         self.embed_dim = embed_dim
 
