@@ -14,13 +14,17 @@ def load_config(config_name: str):
     return OmegaConf.load(pathlib.Path(__file__).parent.resolve() / config_filename)
 
 
-dinov2_default_config_3d = load_config("lucia_ssl3d_default_config")
+lucia_dinov2_default_config_3d = load_config("lucia_ssl3d_default_config")
 
-#dinov2_default_config_3d = load_config_lucia("ssl3d_default_config")
+dinov2_default_config_3d = load_config_lucia("ssl3d_default_config")
+
+lucia_ijepa_default_config_3d = load_config("lucia_ssl3d_ijepa_default_config")
+
+ijepa_default_config_3d = load_config_lucia("ijepa_default_config")
 
 
 def load_and_merge_config_3d(config_name: str):
-    default_config = OmegaConf.create(dinov2_default_config_3d)
+    default_config = OmegaConf.create(ijepa_default_config_3d)
     loaded_config = load_config(config_name)
     return OmegaConf.merge(default_config, loaded_config)
 

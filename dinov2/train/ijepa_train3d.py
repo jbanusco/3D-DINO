@@ -109,8 +109,8 @@ def build_schedulers(cfg):
         total_iters=cfg.optim["epochs"] * OFFICIAL_EPOCH_LENGTH,
     )
     momentum = dict(
-        base_value=cfg.teacher["momentum_teacher"],
-        final_value=cfg.teacher["final_momentum_teacher"],
+        base_value=cfg.target_encoder["ema_start"],
+        final_value=cfg.target_encoder["ema_end"],
         total_iters=cfg.optim["epochs"] * OFFICIAL_EPOCH_LENGTH,
     )
 
@@ -125,8 +125,6 @@ def build_schedulers(cfg):
         lr_schedule,
         wd_schedule,
         momentum_schedule,
-        teacher_temp_schedule,
-        last_layer_lr_schedule,
     )
 
 
@@ -140,15 +138,15 @@ def apply_optim_scheduler(optimizer, lr, wd, last_layer_lr):
 
 
 def do_test(cfg, model, iteration):
-    new_state_dict = model.teacher.state_dict()
+    new_state_dict = model.target_encoder.state_dict()
 
     if distributed.is_main_process():
         iterstring = str(iteration)
         eval_dir = os.path.join(cfg.train.output_dir, "eval", iterstring)
         os.makedirs(eval_dir, exist_ok=True)
-        # save teacher checkpoint
-        teacher_ckp_path = os.path.join(eval_dir, "teacher_checkpoint.pth")
-        torch.save({"teacher": new_state_dict}, teacher_ckp_path)
+        # save target encoder checkpoint
+        target_encoder_ckp_path = os.path.join(eval_dir, "target_encoder_checkpoint.pth")
+        torch.save({"target_encoder": new_state_dict}, target_encoder_ckp_path)
 
 
 def do_train(cfg, model, resume=False):
@@ -162,8 +160,6 @@ def do_train(cfg, model, resume=False):
         lr_schedule,
         wd_schedule,
         momentum_schedule,
-        teacher_temp_schedule,
-        last_layer_lr_schedule,
     ) = build_schedulers(cfg)
 
     # checkpointer
@@ -269,30 +265,28 @@ def do_train(cfg, model, resume=False):
         lr = lr_schedule[iteration]
         wd = wd_schedule[iteration]
         mom = momentum_schedule[iteration]
-        teacher_temp = teacher_temp_schedule[iteration]
-        last_layer_lr = last_layer_lr_schedule[iteration]
-        apply_optim_scheduler(optimizer, lr, wd, last_layer_lr)
+        apply_optim_scheduler(optimizer, lr, wd, lr)
 
         # compute losses
         optimizer.zero_grad(set_to_none=True)
-        loss_dict = model.forward_backward(data, teacher_temp=teacher_temp)
+        loss_dict = model.forward_backward(data)
 
 
         # clip gradients
         if fp16_scaler is not None:
             if cfg.optim.clip_grad:
                 fp16_scaler.unscale_(optimizer)
-                for v in model.student.values():
+                for v in model.encoder.values():
                     v.clip_grad_norm_(cfg.optim.clip_grad)
             fp16_scaler.step(optimizer)
             fp16_scaler.update()
         else:
             if cfg.optim.clip_grad:
-                for v in model.student.values():
+                for v in model.encoder.values():
                     v.clip_grad_norm_(cfg.optim.clip_grad)
             optimizer.step()
 
-        # perform teacher EMA update
+        # perform target_encoder EMA update
         model.update_target_encoder(mom)
 
         # logging
@@ -368,8 +362,6 @@ def main(args):
         return do_test(cfg, model, f"manual_{iteration}")
 
     do_train(cfg, model, resume=not args.no_resume)
-
-
 
 
 
