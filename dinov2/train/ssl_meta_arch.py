@@ -499,12 +499,9 @@ class IJEPAMetaArch(nn.Module):
     def forward_backward(self, batch):
         udata, masks_enc, masks_pred = batch["collated_batch"], batch["collated_masks_enc"], batch["collated_masks_pred"]
 
-        print(udata.shape, len(masks_enc), len(masks_pred))
-        exit()
-
         def load_imgs():
             # -- unsupervised imgs
-            imgs = udata[0].to(device, non_blocking=True)
+            imgs = udata.to(device, non_blocking=True)
             masks_1 = [u.to(device, non_blocking=True) for u in masks_enc]
             masks_2 = [u.to(device, non_blocking=True) for u in masks_pred]
             return imgs, masks_1, masks_2
