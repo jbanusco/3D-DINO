@@ -274,7 +274,7 @@ def do_train(cfg, model, resume=False):
         if fp16_scaler is not None:
             if cfg.optim.clip_grad:
                 fp16_scaler.unscale_(optimizer)
-                model.encoder.valuesclip_grad_norm_(cfg.optim.clip_grad)
+                model.encoder.clip_grad_norm_(cfg.optim.clip_grad)
             fp16_scaler.step(optimizer)
             fp16_scaler.update()
         else:
