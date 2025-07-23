@@ -11,6 +11,7 @@ import copy
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 from dinov2.loss import DINOLoss, iBOTPatchLoss, KoLeoLoss
 from dinov2.models import build_model_from_cfg, ijepa_build_model_from_cfg
