@@ -81,7 +81,7 @@ input:
   num_enc_masks: 1
   num_pred_masks: 4
   allow_overlap: False
-  min_keep: 20
+  min_keep: 10
 crops:
   global_crops_in_slice_scale:
   - 0.48

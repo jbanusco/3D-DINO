@@ -131,11 +131,10 @@ def build_schedulers(cfg):
 
 def apply_optim_scheduler(optimizer, lr, wd, last_layer_lr):
     for param_group in optimizer.param_groups:
-        is_last_layer = param_group["is_last_layer"]
         lr_multiplier = param_group["lr_multiplier"]
         wd_multiplier = param_group["wd_multiplier"]
         param_group["weight_decay"] = wd * wd_multiplier
-        param_group["lr"] = (last_layer_lr if is_last_layer else lr) * lr_multiplier
+        param_group["lr"] = lr * lr_multiplier
 
 
 def do_test(cfg, model, iteration):
