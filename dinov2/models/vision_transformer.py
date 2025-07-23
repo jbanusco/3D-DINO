@@ -477,11 +477,13 @@ class IJEPATransformerPredictor(nn.Module):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
         # --
         self.predictor_pos_embed = nn.Parameter(torch.zeros(1, num_patches, predictor_embed_dim),
-                                                requires_grad=False)
+
+        """                                        requires_grad=False)
         predictor_pos_embed = get_3d_sincos_pos_embed(self.predictor_pos_embed.shape[-1],
                                                       int(num_patches**(1.0/3.0)),
                                                       cls_token=False)
         self.predictor_pos_embed.data.copy_(torch.from_numpy(predictor_pos_embed).float().unsqueeze(0))
+        """
         # --
         self.predictor_blocks = nn.ModuleList([
             PredictorBlock(
