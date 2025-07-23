@@ -16,11 +16,11 @@ def load_config(config_name: str):
 
 lucia_dinov2_default_config_3d = load_config("lucia_ssl3d_default_config")
 
-dinov2_default_config_3d = load_config_lucia("ssl3d_default_config")
+dinov2_default_config_3d = load_config("ssl3d_default_config")
 
 lucia_ijepa_default_config_3d = load_config("lucia_ssl3d_ijepa_default_config")
 
-ijepa_default_config_3d = load_config_lucia("ijepa_default_config")
+ijepa_default_config_3d = load_config("ijepa_default_config")
 
 
 def load_and_merge_config_3d(config_name: str):
