@@ -350,10 +350,9 @@ class MaskCollator3D(object):
         # 5. return enc mask and pred mask
         '''
 
-        B = len(batch)
-        print(batch)
-        exit()
-        collated_batch = torch.utils.data.default_collate(batch)
+        B = len(batch[0][0]["images"])
+
+        collated_batch = torch.utils.data.default_collate(batch[0][0]["images"])
 
         seed = self.step()
         g = torch.Generator()
