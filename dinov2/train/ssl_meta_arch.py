@@ -497,13 +497,13 @@ class IJEPAMetaArch(nn.Module):
             loss.backward()
 
     def forward_backward(self, batch):
-        udata, mask_enc, mask_pred = batch["collated_batch"], batch["collated_masks_enc"], batch["collated_masks_pred"]
+        udata, masks_enc, masks_pred = batch["collated_batch"], batch["collated_masks_enc"], batch["collated_masks_pred"]
         def load_imgs():
             # -- unsupervised imgs
             imgs = udata[0].to(device, non_blocking=True)
             masks_1 = [u.to(device, non_blocking=True) for u in masks_enc]
             masks_2 = [u.to(device, non_blocking=True) for u in masks_pred]
-            return (imgs, masks_1, masks_2)
+            return imgs, masks_1, masks_2
 
         device = next(self.encoder.parameters()).device
         imgs, masks_enc, masks_pred = load_imgs()
