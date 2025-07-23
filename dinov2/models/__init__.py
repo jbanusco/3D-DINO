@@ -7,7 +7,7 @@ import logging
 import torch
 from . import vision_transformer as vits
 from .vision_transformer import IJEPATransformerPredictor
-
+from torch.nn.init import trunc_normal_
 logger = logging.getLogger("dinov2")
 
 
