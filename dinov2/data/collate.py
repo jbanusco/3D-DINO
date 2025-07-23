@@ -6,7 +6,7 @@
 
 import torch
 import random
-
+from multiprocessing import Value
 
 def collate_data_and_cast(samples_list, mask_ratio_tuple, mask_probability, dtype, n_tokens=None, mask_generator=None):
     # dtype = torch.half  # TODO: Remove
