@@ -131,8 +131,7 @@ def build_schedulers(cfg):
 
 def apply_optim_scheduler(optimizer, lr, wd, last_layer_lr):
     for param_group in optimizer.param_groups:
-        wd_multiplier = param_group["wd_multiplier"]
-        param_group["weight_decay"] = wd * wd_multiplier
+        param_group["weight_decay"] = wd
         param_group["lr"] = lr
 
 
