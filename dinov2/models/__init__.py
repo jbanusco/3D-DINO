@@ -6,7 +6,7 @@
 import logging
 import torch
 from . import vision_transformer as vits
-from .vision_transformer import IJEPATransformerPredictor, apply_masks
+from .vision_transformer import IJEPATransformerPredictor, apply_masks, repeat_interleave_batch
 from torch.nn.init import trunc_normal_
 logger = logging.getLogger("dinov2")
 
