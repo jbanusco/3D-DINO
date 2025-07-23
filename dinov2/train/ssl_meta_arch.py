@@ -531,12 +531,14 @@ class IJEPAMetaArch(nn.Module):
             #loss = AllReduce.apply(loss)
             return loss
 
-        reshard_fsdp_model(self.target_encoder)
+
 
         loss_dict = {}
 
         h = forward_target()
+        reshard_fsdp_model(self.target_encoder)
         z = forward_context()
+
         loss = loss_fn(z, h)
 
         loss_dict["ijepa_loss"] = loss
