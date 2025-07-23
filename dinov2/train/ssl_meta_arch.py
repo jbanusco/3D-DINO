@@ -7,6 +7,7 @@
 from functools import partial
 import logging
 import math
+import copy
 
 import torch
 from torch import nn
