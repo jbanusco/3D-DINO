@@ -69,10 +69,9 @@ class Trainer(object):
         self.args = args
 
     def __call__(self):
-        from dinov2.train import train3d
-
+        from dinov2.train import ijepa_train3d
         self._setup_gpu_args()
-        train3d.main(self.args)
+        ijepa_train3d.main(self.args)
 
     def checkpoint(self):
         import os
