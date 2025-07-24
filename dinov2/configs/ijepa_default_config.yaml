@@ -33,7 +33,7 @@ train:
   centering: sinkhorn_knopp
 encoder:
   arch: vit_large_3d
-  patch_size: 8
+  patch_size: 16
   drop_path_rate: 0.3
   layerscale: 1.0e-05
   drop_path_uniform: true
@@ -65,7 +65,7 @@ target_encoder:
   ema_start: 0.996 # 0.996
   ema_end: 1.0
 input:
-  size: 96
+  size: 128 # 96
   pred_mask_scale:
   - 0.15
   - 0.2
@@ -89,6 +89,6 @@ crops:
   global_crops_cross_slice_scale:
   - 0.5
   - 1.0
-  global_crops_size: 96
+  global_crops_size: 128 # 96
 evaluation:
   eval_period_iterations: 12800
