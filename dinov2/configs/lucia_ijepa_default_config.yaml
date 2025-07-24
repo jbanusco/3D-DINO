@@ -2,44 +2,24 @@ MODEL:
   WEIGHTS: ''
 compute_precision:
   grad_scaler: true
-  teacher:
-    backbone:
-      sharding_strategy: SHARD_GRAD_OP
-      mixed_precision:
-        param_dtype: fp16
-        reduce_dtype: fp16
-        buffer_dtype: fp32
-    dino_head:
-      sharding_strategy: SHARD_GRAD_OP
-      mixed_precision:
-        param_dtype: fp16
-        reduce_dtype: fp16
-        buffer_dtype: fp32
-    ibot_head:
-      sharding_strategy: SHARD_GRAD_OP
-      mixed_precision:
-        param_dtype: fp16
-        reduce_dtype: fp16
-        buffer_dtype: fp32
-  student:
-    backbone:
-      sharding_strategy: SHARD_GRAD_OP
-      mixed_precision:
-        param_dtype: fp16
-        reduce_dtype: fp16
-        buffer_dtype: fp32
-    dino_head:
-      sharding_strategy: SHARD_GRAD_OP
-      mixed_precision:
-        param_dtype: fp16
-        reduce_dtype: fp32
-        buffer_dtype: fp32
-    ibot_head:
-      sharding_strategy: SHARD_GRAD_OP
-      mixed_precision:
-        param_dtype: fp16
-        reduce_dtype: fp32
-        buffer_dtype: fp32
+  target_encoder:
+    sharding_strategy: SHARD_GRAD_OP
+    mixed_precision:
+      param_dtype: fp16
+      reduce_dtype: fp16
+      buffer_dtype: fp32
+  encoder:
+    sharding_strategy: SHARD_GRAD_OP
+    mixed_precision:
+      param_dtype: fp16
+      reduce_dtype: fp16
+      buffer_dtype: fp32
+  predictor:
+    sharding_strategy: SHARD_GRAD_OP
+    mixed_precision:
+      param_dtype: fp16
+      reduce_dtype: fp16
+      buffer_dtype: fp32
 train:
   batch_size_per_gpu: 64
   data_min_axis_size: 24
@@ -47,7 +27,7 @@ train:
   output_dir: ./output_test
   saveckp_freq: 1
   seed: 0
-  num_workers: 32
+  num_workers: 8
   OFFICIAL_EPOCH_LENGTH: 1250
   cache_dataset: True
   centering: sinkhorn_knopp
@@ -64,6 +44,8 @@ encoder:
   qkv_bias: true
   proj_bias: true
   ffn_bias: true
+  pred_embed_dim: 384
+  pred_depth: 12
 optim:
   epochs: 100
   weight_decay: 0.04
@@ -85,10 +67,19 @@ target_encoder:
 input:
   size: 96
   pred_mask_scale:
+  - 0.15
+  - 0.2
   enc_mask_scale:
+  - 0.85
+  - 1.0
+  aspect_ratio:
+  - 0.75
+  - 1.5
   depth_ratio:
-  num_enc_masks:
-  num_pred_masks:
+  - 0.75
+  - 1.5
+  num_enc_masks: 1
+  num_pred_masks: 4
   allow_overlap: False
   min_keep: 10
 crops:
