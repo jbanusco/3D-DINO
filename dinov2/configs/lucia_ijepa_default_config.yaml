@@ -41,9 +41,9 @@ compute_precision:
         reduce_dtype: fp32
         buffer_dtype: fp32
 train:
-  batch_size_per_gpu: 8 # 128
+  batch_size_per_gpu: 64
   data_min_axis_size: 24
-  dataset_path:  "/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
+  dataset_path:  "/gpfs/projects/acad/ariacpg/gerinb/data/FOMO25/dataset.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
   saveckp_freq: 1
   seed: 0
@@ -90,7 +90,7 @@ input:
   num_enc_masks:
   num_pred_masks:
   allow_overlap: False
-  min_keep: 8
+  min_keep: 10
 crops:
   global_crops_in_slice_scale:
   - 0.48

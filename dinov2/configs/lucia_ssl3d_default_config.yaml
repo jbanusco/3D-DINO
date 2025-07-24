@@ -61,7 +61,7 @@ ibot:
 train:
   batch_size_per_gpu: 64
   data_min_axis_size: 24
-  dataset_path:  "/gpfs/projects/acad/danitim/gerinb/cell_profiling/data/FOMO25/FOMO-MRI/dataset.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
+  dataset_path:  "/gpfs/projects/acad/ariacpg/gerinb/data/FOMO25/dataset.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
   saveckp_freq: 1
   seed: 0
