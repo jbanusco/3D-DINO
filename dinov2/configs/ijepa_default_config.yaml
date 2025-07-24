@@ -21,14 +21,14 @@ compute_precision:
       reduce_dtype: fp16
       buffer_dtype: fp32
 train:
-  batch_size_per_gpu: 128 # 128
+  batch_size_per_gpu: 256 # 128
   data_min_axis_size: 24
   dataset_path:  "/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json" #'/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json' #"/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset_first_100.json" # '/Benson_DATA2/gerinb/FOMO2025/FOMO-MRI-preprocessed/dataset.json'
   output_dir: ./output_test
   saveckp_freq: 1
   seed: 0
   num_workers: 32
-  OFFICIAL_EPOCH_LENGTH: 1280 # 1280
+  OFFICIAL_EPOCH_LENGTH: 640 # 1280
   cache_dataset: True
   centering: sinkhorn_knopp
 encoder:
