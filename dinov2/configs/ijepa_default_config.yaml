@@ -53,7 +53,7 @@ optim:
   base_lr: 0.002  # 0.002 learning rate for a batch size of 1024
   lr: 0.  # will be set after applying scaling rule
   warmup_epochs: 10
-  start_lr: 1.0e-06
+  start_lr: 1.0e-04 # 1.0e-06
   min_lr: 1.0e-06
   clip_grad: 3.0 # 3.0
   scaling_rule: sqrt_wrt_1024
