@@ -79,7 +79,7 @@ input:
   - 0.75
   - 1.5
   num_enc_masks: 1
-  num_pred_masks: 8 # 4
+  num_pred_masks: 4
   allow_overlap: False
   min_keep: 10
 crops:
