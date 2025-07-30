@@ -121,8 +121,8 @@ class MaskCollator(object):
         valid_mask = False
         while not valid_mask:
             # -- Sample block top-left corner
-            top = torch.randint(0, self.height - h, (1,))
-            left = torch.randint(0, self.width - w, (1,))
+            top = torch.randint(0, self.height - h + 1, (1,))
+            left = torch.randint(0, self.width - w + 1, (1,))
             mask = torch.zeros((self.height, self.width), dtype=torch.int32)
             mask[top:top+h, left:left+w] = 1
             # -- Constrain mask to a set of acceptable regions
@@ -415,3 +415,22 @@ class MaskCollator3D(object):
         }
 
         return out
+
+
+if __name__ == '__main__':
+    import torch
+
+    g = torch.Generator()
+    mc = MaskCollator(input_size=(96, 96), patch_size=16, npred=10)
+    p_size = mc._sample_block_size(
+        generator=g,
+        scale=mc.pred_mask_scale,
+        aspect_ratio_scale=mc.aspect_ratio)
+
+    for i in range(1000):
+        x = mc._sample_block_mask(p_size)[1]
+        if not torch.all(x[:,-1]):
+            print(i)
+            break
+    print(x)
+    print("Done!")
