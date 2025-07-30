@@ -7,6 +7,7 @@
 import torch
 import random
 from multiprocessing import Value
+import math
 
 def collate_data_and_cast(samples_list, mask_ratio_tuple, mask_probability, dtype, n_tokens=None, mask_generator=None):
     # dtype = torch.half  # TODO: Remove
@@ -98,9 +99,9 @@ class MaskCollator(object):
         # -- Compute block height and width (given scale and aspect-ratio)
         h = int(round(math.sqrt(max_keep * aspect_ratio)))
         w = int(round(math.sqrt(max_keep / aspect_ratio)))
-        while h >= self.height:
+        while h > self.height:
             h -= 1
-        while w >= self.width:
+        while w > self.width:
             w -= 1
 
         return (h, w)
@@ -281,11 +282,11 @@ class MaskCollator3D(object):
         d = int(round(depth_ratio * h))
 
         # Ensure dimensions don't exceed limits
-        while h >= self.height:
+        while h > self.height:
             h -= 1
-        while w >= self.width:
+        while w > self.width:
             w -= 1
-        while d >= self.depth:
+        while d > self.depth:
             d -= 1
 
         # Ensure minimum size
