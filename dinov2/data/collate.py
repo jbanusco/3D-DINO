@@ -221,7 +221,7 @@ class MaskCollator3D(object):
             nenc=1,
             npred=2,
             min_keep=8,  # Increased for 3D
-            allow_overlap=False
+            allow_overlap_prob=0.2
     ):
         super(MaskCollator3D, self).__init__()
         if not isinstance(input_size, tuple):
@@ -245,8 +245,10 @@ class MaskCollator3D(object):
         self.nenc = nenc
         self.npred = npred
         self.min_keep = min_keep
-        self.allow_overlap = allow_overlap
+        self.allow_overlap_prob = allow_overlap_prob
+        self.allow_overlap = False
         self._itr_counter = Value('i', -1)
+        self._p_scale = 0.0
 
     def step(self):
         i = self._itr_counter
@@ -255,12 +257,16 @@ class MaskCollator3D(object):
             v = i.value
         return v
 
-    def _sample_block_size(self, generator, scale, aspect_ratio_scale, depth_ratio_scale):
-        _rand = torch.rand(3, generator=generator)  # Need 3 random numbers for 3D
+    def _sample_block_size(self, generator, scale, aspect_ratio_scale, depth_ratio_scale, register_scale=False):
+        _rand = torch.rand(4, generator=generator)  # Need 3 random numbers for 3D
 
         # -- Sample block scale
         min_s, max_s = scale
         mask_scale = min_s + _rand[0].item() * (max_s - min_s)
+
+        if register_scale:
+            self._p_scale = mask_scale
+
         max_keep = int(self.depth * self.height * self.width * mask_scale)
 
         # -- Sample block aspect-ratios
@@ -269,6 +275,8 @@ class MaskCollator3D(object):
 
         min_dr, max_dr = depth_ratio_scale
         depth_ratio = min_dr + _rand[2].item() * (max_dr - min_dr)
+
+        self.allow_overlap = self.allow_overlap_prob > _rand[4].item()
 
         # -- Compute block dimensions (given scale and aspect-ratios)
         # For 3D: volume = h * w * d = max_keep
@@ -334,6 +342,8 @@ class MaskCollator3D(object):
                     print(f'Mask generator says: "Valid mask not found, decreasing acceptable-regions [{tries}]"')
 
         mask_indices = mask_indices.squeeze()
+        if torch.numel(mask_indices) == 1:
+            mask_indices = mask_indices.unsqueeze(0)
 
         # -- Create complement mask
         mask_complement = torch.ones((self.height, self.width, self.depth), dtype=torch.int32)
@@ -362,13 +372,23 @@ class MaskCollator3D(object):
             generator=g,
             scale=self.pred_mask_scale,
             aspect_ratio_scale=self.aspect_ratio,
-            depth_ratio_scale=self.depth_ratio)
+            depth_ratio_scale=self.depth_ratio,
+            register_scale=True)
+
+        enc_mask_scale = self.enc_mask_scale
+
+        if self._p_scale * 3 > self.enc_mask_scale[0]:
+            enc_mask_scale[0] = self._p_scale * 3
+        if self._p_scale * 3 > self.enc_mask_scale[1]:
+            enc_mask_scale[1] = self._p_scale * 3
 
         e_size = self._sample_block_size(
             generator=g,
-            scale=self.enc_mask_scale,
+            scale=enc_mask_scale,
             aspect_ratio_scale=(1., 1.),
             depth_ratio_scale=(1., 1.))
+
+        self._p_scale = 0.0  # reset
 
         collated_masks_pred, collated_masks_enc = [], []
         min_keep_pred = self.height * self.width * self.depth

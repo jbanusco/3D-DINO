@@ -168,7 +168,7 @@ def do_train(cfg, model, resume=False):
 
     periodic_checkpointer = PeriodicCheckpointer(
         checkpointer,
-        period=1250,
+        period=1280*5,
         max_iter=max_iter,
         max_to_keep=1,
     )
@@ -211,7 +211,7 @@ def do_train(cfg, model, resume=False):
             depth_ratio=cfg.input.depth_ratio,
             nenc= cfg.input.num_enc_masks,
             npred= cfg.input.num_pred_masks,
-            allow_overlap=cfg.input.allow_overlap,
+            allow_overlap_prob=cfg.input.allow_overlap_prob,
             min_keep=cfg.input.min_keep,
         )
 
