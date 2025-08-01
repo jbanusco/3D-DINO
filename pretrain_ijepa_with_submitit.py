@@ -97,7 +97,7 @@ class Trainer(object):
 def main():
     args = parse_args()
     if args.output_dir == "":
-        args.output_dir = get_shared_folder() / "ijepa"
+        args.output_dir = get_shared_folder() / "ijepa_v2"
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     executor = submitit.AutoExecutor(folder=args.output_dir, slurm_max_num_timeout=2)
 
