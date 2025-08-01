@@ -276,7 +276,7 @@ class MaskCollator3D(object):
         min_dr, max_dr = depth_ratio_scale
         depth_ratio = min_dr + _rand[2].item() * (max_dr - min_dr)
 
-        self.allow_overlap = self.allow_overlap_prob > _rand[4].item()
+        self.allow_overlap = self.allow_overlap_prob > _rand[3].item()
 
         # -- Compute block dimensions (given scale and aspect-ratios)
         # For 3D: volume = h * w * d = max_keep
