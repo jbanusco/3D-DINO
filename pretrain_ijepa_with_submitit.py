@@ -32,7 +32,7 @@ def parse_args():
     #parser.add_argument("--output_dir", default="", type=str)
 
     # Lucia specific parameters
-    parser.add_argument("--partition", default="gpu", type=str, help="Partition where to submit")
+    parser.add_argument("--partition", default="ia", type=str, help="Partition where to submit")
     #parser.add_argument("--use_volta32", action='store_true', help="Big models? Use this")
     parser.add_argument('--job-name', default="3DINO", type=str)
     parser.add_argument("--output", default="/gpfs/home/acad/ucl-elen/gerinb/slurm/logs/%j_%x.out", type=str)
