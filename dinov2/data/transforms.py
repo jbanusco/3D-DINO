@@ -147,3 +147,62 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
 
     return train_transforms, val_transforms
 
+
+
+def make_regression_transform_3d(dataset_name: str, image_size: int, min_int: float):
+    """
+    Create a training and validation transform for 3D regression tasks.
+
+    Args:
+        dataset_name: Name of the regression dataset (e.g., ICBM).
+        image_size: Size of the image to be used for training.
+        min_int: Minimum intensity value to map the image to.
+    Returns:
+        Training and validation transforms.
+    """
+
+    if image_size == 0:
+        resize_transform = Identityd(keys=["image"])
+    else:
+        resize_transform = Resized(keys=["image"], spatial_size=(image_size, image_size, image_size), mode="trilinear")
+
+    if dataset_name == 'ICBM':
+        train_transforms = Compose(
+            [
+                LoadImaged(keys=["image"], ensure_channel_first=True),
+                EnsureTyped(keys=["image", "label"]),
+                Orientationd(keys=["image"], axcodes="RAS"),
+                ScaleIntensityRangePercentilesd(
+                    keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
+                ),
+                CropForegroundd(keys=["image"], source_key="image", select_fn=lambda x: x > min_int),
+                resize_transform,
+                OneOf(transforms=[
+                    RandomAffine(include=["image"], p=0.3, degrees=(30, 30, 30),
+                                 scales=(0.8, 1.25), translation=(0.1, 0.1, 0.1),
+                                 default_pad_value=min_int),
+                    RandAdjustContrastd(keys=["image"], prob=0.3, gamma=(0.5, 2)),
+                    RandGaussianSharpend(keys=["image"], prob=0.3),
+                    RandGaussianSmoothd(keys=["image"], prob=0.3),
+                    RandGaussianNoised(keys=["image"], prob=0.3, std=0.002),
+                ]),
+                RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+                RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
+            ]
+        )
+        val_transforms = Compose(
+            [
+                LoadImaged(keys=["image"], ensure_channel_first=True),
+                EnsureTyped(keys=["image", "label"]),
+                Orientationd(keys=["image"], axcodes="RAS"),
+                ScaleIntensityRangePercentilesd(
+                    keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
+                ),
+                CropForegroundd(keys=["image"], source_key="image", select_fn=lambda x: x > min_int),
+                resize_transform,
+            ]
+        )
+    else:
+        raise ValueError(f'Unknown dataset for regression: {dataset_name}')
+
+    return train_transforms, val_transforms

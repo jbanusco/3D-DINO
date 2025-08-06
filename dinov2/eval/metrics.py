@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 
 from torchmetrics import Metric, MetricCollection
 from torchmetrics.classification import MulticlassAccuracy
+from torchmetrics.regression import MeanAbsoluteError
 
 
 logger = logging.getLogger("dinov2")
@@ -18,6 +19,7 @@ class MetricType(Enum):
     MEAN_ACCURACY = "mean_accuracy"
     MEAN_PER_CLASS_ACCURACY = "mean_per_class_accuracy"
     PER_CLASS_ACCURACY = "per_class_accuracy"
+    MEAN_ABSOLUTE_ERROR = "mean_absolute_error"  # For the regression task
 
     @property
     def accuracy_averaging(self):
@@ -43,6 +45,10 @@ def build_metric(metric_type: MetricType, *, num_classes: int, ks: Optional[tupl
             num_classes=num_classes,
             ks=(1, 5) if ks is None else ks,
         )
+    elif metric_type == MetricType.MEAN_ABSOLUTE_ERROR:
+        return MetricCollection({
+            "mae": MeanAbsoluteError()
+        })
 
     raise ValueError(f"Unknown metric type {metric_type}")
 

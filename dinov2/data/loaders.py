@@ -218,6 +218,64 @@ def make_classification_dataset_3d(
     return train_dataset, val_dataset, test_dataset, class_num
 
 
+def make_regression_dataset_3d(
+    dataset_name: str,
+    dataset_percent: int,
+    base_directory: str,
+    train_transforms: Callable,
+    val_transforms: Callable,
+    cache_path: str,
+    dataset_seed: int,
+):
+    """
+    Creates a 3D regression dataset from a datalist JSON file.
+
+    Args:
+        dataset_name: Name of the regression dataset (e.g., ICBM).
+        dataset_percent: Percent of training dataset to use.
+        base_directory: Path to the directory containing datalist JSON.
+        train_transforms: Transforms to apply to training samples.
+        val_transforms: Transforms to apply to validation/test samples.
+        cache_path: Path to directory for MONAI PersistentDataset cache.
+        dataset_seed: Random seed to ensure reproducibility.
+
+    Returns:
+        train_dataset, val_dataset, test_dataset, and input_channels
+    """
+
+    if dataset_name == 'ICBM':
+        datalist_path = os.path.join(base_directory, 'ICBM_regression_datalist.json')
+        input_channels = 1
+    else:
+        raise ValueError(f'Unsupported regression dataset: "{dataset_name}"')
+
+    with open(datalist_path, 'r') as json_f:
+        datalist = json.load(json_f)
+
+    # Optional: filter by a numeric range if needed (e.g. age 20–60)
+    # datalist['training'] = [x for x in datalist['training'] if 20 <= x['label'] <= 60]
+
+    random.Random(dataset_seed).shuffle(datalist['training'])
+    logger.info(f"Shuffled training data with seed {dataset_seed}")
+
+    train_data_ind = int(round(len(datalist['training']) * (dataset_percent / 100)))
+    train_datalist = datalist['training'][:train_data_ind]
+    val_datalist = datalist['validation']
+    test_datalist = datalist['test']
+
+    logger.info(f"# of train samples: {len(train_datalist):,d}")
+    logger.info(f"# of val samples: {len(val_datalist):,d}")
+    logger.info(f"# of test samples: {len(test_datalist):,d}")
+
+    train_dataset = PersistentDataset(train_datalist, transform=train_transforms, cache_dir=cache_path)
+    val_dataset = PersistentDataset(val_datalist, transform=val_transforms, cache_dir=cache_path)
+    test_dataset = PersistentDataset(test_datalist, transform=val_transforms, cache_dir=cache_path)
+
+    return train_dataset, val_dataset, test_dataset, input_channels
+
+
+
+
 def _make_sampler(
     *,
     dataset,
