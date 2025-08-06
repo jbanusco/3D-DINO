@@ -246,6 +246,9 @@ def make_regression_dataset_3d(
     if dataset_name == 'ICBM':
         datalist_path = os.path.join(base_directory, 'ICBM_regression_datalist.json')
         input_channels = 1
+    elif dataset_name == 'FOMO':
+        datalist_path = os.path.join(base_directory, 'fomo_fold_0.json')  # Or use fold name format
+        input_channels = 3  # since you have image1, image2, image3
     else:
         raise ValueError(f'Unsupported regression dataset: "{dataset_name}"')
 
