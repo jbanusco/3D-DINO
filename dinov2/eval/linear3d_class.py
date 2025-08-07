@@ -244,8 +244,8 @@ class LinearPostprocessor(nn.Module):
     def forward(self, samples, targets):
         preds = self.linear_regressor(samples)
         return {
-            "preds": preds.squeeze(),
-            "target": targets.squeeze(),
+            "preds": preds,
+            "target": targets.long(),
         }
 
 
@@ -324,7 +324,8 @@ def evaluate_linear_regressors(
     for i, (regressor_string, metric) in enumerate(results_dict_temp.items()):
         logger.info(f"{prefixstring} -- Regressor: {regressor_string} * {metric}")
         if (best_regressor_on_val is None and metric["top-1"].item() > max_accuracy) or regressor_string == best_regressor_on_val:
-            min_mae = metric["mae"].item()
+            # min_mae = metric["mae"].item()
+            max_accuracy = metric["top-1"].item()
             best_regressor = regressor_string
 
     if best_regressor_on_val is None:
@@ -394,7 +395,7 @@ def eval_linear(
         outputs = linear_regressors(features)
 
         # TODO: The loss is defined here!!
-        losses = {f"loss_{k}": nn.CrossEntropyLoss()(v, labels) for k, v in outputs.items()}
+        losses = {f"loss_{k}": nn.CrossEntropyLoss()(v, labels.long()) for k, v in outputs.items()}
         # If x was shaped [2, 2, 112, 112, 112], it becomes [4, 1, 112, 112, 112] : IMPORTANT FOR MULTI-CHANNEL
         # print("V") 
         # print(outputs)
