@@ -40,7 +40,7 @@ def load_label_from_txt(x):
     return float(x)
 
 
-def make_classification_transform_3d(dataset_name: str, image_size: int, min_int: float):
+def make_classification_transform_3d(dataset_name: str, image_size: int, min_int: float, resize_scale: float = 1.0):
     """
     Create a training and validation transform for 3D classification tasks.
 
@@ -153,7 +153,52 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
                 Lambdad(keys=["label"], func=label_map)
             ]
         )
-
+    elif dataset_name.startswith("fomo-task1"):        
+        train_transforms = Compose([
+            # LoadImaged(keys=["image1", "image2"]),
+            # EnsureChannelFirstd(keys=["image1", "image2"]),
+            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
+            LoadImaged(keys=["image1", "image2"], ensure_channel_first=True),
+            ConcatItemsd(keys=["image1", "image2"], name="image", dim=0),
+            DeleteItemsd(keys=["image1", "image2"]),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            Spacingd(
+                keys=["image"],
+                pixdim=(1.0 / resize_scale, 1.0 / resize_scale, 1.0 / resize_scale),
+                mode=("bilinear"),
+            ),
+            ScaleIntensityRangePercentilesd(
+                keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1.0, clip=True, channel_wise=True
+            ),
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode="constant"),
+            RandSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size), random_size=False),
+            RandFlipd(keys=["image"], prob=0.5, spatial_axis=0),
+            RandFlipd(keys=["image"], prob=0.5, spatial_axis=1),
+            RandFlipd(keys=["image"], prob=0.5, spatial_axis=2),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+            RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
+            Lambdad(keys="label", func=load_label_from_txt),
+        ])
+        val_transforms = Compose([
+            # LoadImaged(keys=["image1", "image2"]),
+            # EnsureChannelFirstd(keys=["image1", "image2"]),
+            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
+            LoadImaged(keys=["image1", "image2"], ensure_channel_first=True),
+            ConcatItemsd(keys=["image1", "image2"], name="image", dim=0),
+            DeleteItemsd(keys=["image1", "image2"]),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            Spacingd(
+                keys=["image"],
+                pixdim=(1.0 / resize_scale, 1.0 / resize_scale, 1.0 / resize_scale),
+                mode=("bilinear"),
+            ),
+            ScaleIntensityRangePercentilesd(
+                keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
+            ),
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), value=min_int),
+            CenterSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size)),
+            Lambdad(keys="label", func=load_label_from_txt),
+        ])
     else:
         raise ValueError(f'Unknown dataset: {dataset_name}')
 

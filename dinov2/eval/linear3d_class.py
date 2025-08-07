@@ -18,8 +18,8 @@ import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 
-from dinov2.data import SamplerType, make_data_loader, make_regression_dataset_3d
-from dinov2.data.transforms import make_regression_transform_3d
+from dinov2.data import SamplerType, make_data_loader, make_classification_dataset_3d
+from dinov2.data.transforms import make_classification_transform_3d
 import dinov2.distributed as distributed
 from dinov2.eval.metrics import MetricType, build_metric
 from dinov2.eval.setup import get_args_parser as get_setup_args_parser
@@ -318,27 +318,28 @@ def evaluate_linear_regressors(
 
     logger.info("")
     results_dict = {}
-    min_error = 1e10
+    # min_error = 1e10
+    max_accuracy = 0
     best_regressor = ""
     for i, (regressor_string, metric) in enumerate(results_dict_temp.items()):
         logger.info(f"{prefixstring} -- Regressor: {regressor_string} * {metric}")
-        if (best_regressor_on_val is None and metric["mae"].item() < min_error) or regressor_string == best_regressor_on_val:
+        if (best_regressor_on_val is None and metric["top-1"].item() > max_accuracy) or regressor_string == best_regressor_on_val:
             min_mae = metric["mae"].item()
             best_regressor = regressor_string
 
     if best_regressor_on_val is None:
-        results_dict["best_regressor"] = {
+        results_dict["best_classifier"] = {
             "name": best_regressor,
-            "error": min_mae
+            "accuracy": max_accuracy
         }
     else:
-        results_dict["best_regressor"] = {
+        results_dict["best_classifier"] = {
             "name": best_regressor,
-            "error": min_mae,
+            "accuracy": max_accuracy,
             "pred_dict": pred_dict[best_regressor]
         }
 
-    logger.info(f"best regressor: {results_dict['best_regressor']}")
+    logger.info(f"best regressor: {results_dict['best_classifier']}")
 
     if distributed.is_main_process():
         with open(metrics_file_path, "a") as f:
@@ -377,8 +378,8 @@ def eval_linear(
     metric_logger = MetricLogger(delimiter="  ")
     header = "Training"
 
-    # max_val_acc = -1
-    min_val_error = 1e10
+    max_val_acc = -1
+    # min_val_error = 1e10
     for data_dict in metric_logger.log_every(
         train_data_loader,
         10,
@@ -393,7 +394,7 @@ def eval_linear(
         outputs = linear_regressors(features)
 
         # TODO: The loss is defined here!!
-        # losses = {f"loss_{k}": nn.CrossEntropyLoss()(v, labels) for k, v in outputs.items()}
+        losses = {f"loss_{k}": nn.CrossEntropyLoss()(v, labels) for k, v in outputs.items()}
         # If x was shaped [2, 2, 112, 112, 112], it becomes [4, 1, 112, 112, 112] : IMPORTANT FOR MULTI-CHANNEL
         # print("V") 
         # print(outputs)
@@ -401,7 +402,7 @@ def eval_linear(
             # print(v, v.shape)
         # print("labels")
         # print(labels, labels.shape)
-        losses = {f"loss_{k}": nn.MSELoss()(v, labels.float()) for k, v in outputs.items()}
+        # losses = {f"loss_{k}": nn.MSELoss()(v, labels.float()) for k, v in outputs.items()}
         loss = sum(losses.values())
 
         # compute the gradients
@@ -444,8 +445,8 @@ def eval_linear(
             
             # save best model on val to use for test
             if distributed.is_main_process():
-                if res_dict["best_regressor"]["error"] < min_val_error:
-                    min_val_error = res_dict["best_regressor"]["error"]
+                if res_dict["best_classifier"]["accuracy"] > max_val_acc:
+                    max_val_acc = res_dict["best_classifier"]["accuracy"]
                     periodic_checkpointer.save("best_val", iteration=iteration)
             torch.cuda.synchronize()
 
@@ -518,8 +519,8 @@ def run_eval_linear(
     # transforms, datasets, metric\
     # print("EEEEH")
     # print(image_size)
-    train_transform, val_transform = make_regression_transform_3d(dataset_name, image_size, min_int=-1.0, resize_scale=1.0)
-    train_dataset, val_dataset, test_dataset, input_channels, num_outputs = make_regression_dataset_3d(
+    train_transform, val_transform = make_classification_transform_3d(dataset_name, image_size, min_int=-1.0, resize_scale=1.0)
+    train_dataset, val_dataset, test_dataset, input_channels, num_outputs = make_classification_dataset_3d(
         dataset_name=dataset_name,
         dataset_percent=dataset_percent,
         base_directory=base_data_dir,
@@ -528,8 +529,8 @@ def run_eval_linear(
         cache_path=data_cache_path,
         dataset_seed=dataset_seed,
     )
-    # metric = build_metric(MetricType.MEAN_ACCURACY, num_classes=num_classes, ks=(1,))
-    metric = build_metric(MetricType.MEAN_ABSOLUTE_ERROR)
+    metric = build_metric(MetricType.MEAN_ACCURACY, num_classes=num_outputs, ks=(1,))
+    # metric = build_metric(MetricType.MEAN_ABSOLUTE_ERROR)
     # ===========================
 
     # linear regressors
@@ -640,16 +641,15 @@ def run_eval_linear(
         metric,
         metrics_file_path,
         iteration,
-        val_results_dict["best_regressor"]["name"],
+        val_results_dict["best_classifier"]["name"],
         prefixstring="",
     )
 
-    # TODO: Update this
     results_dict = {}
-    results_dict["best_regressor"] = val_results_dict["best_regressor"]["name"]
-    results_dict[f"val_{dataset_name}_mae"] = val_results_dict["best_regressor"]["error"]
-    results_dict[f"test_{dataset_name}_mae"] = test_results_dict["best_regressor"]["error"]
-    results_dict[f"test_{dataset_name}_pred_dict"] = test_results_dict["best_regressor"]["pred_dict"]
+    results_dict["best_classifier"] = val_results_dict["best_classifier"]["name"]
+    results_dict[f"val_{dataset_name}_accuracy"] = 100.0 * val_results_dict["best_classifier"]["accuracy"]
+    results_dict[f"test_{dataset_name}_accuracy"] = 100.0 * test_results_dict["best_classifier"]["accuracy"]
+    results_dict[f"test_{dataset_name}_pred_dict"] = test_results_dict["best_classifier"]["pred_dict"]
     logger.info("Test Results Dict " + str(results_dict))
 
     return results_dict

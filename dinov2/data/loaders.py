@@ -177,10 +177,16 @@ def make_classification_dataset_3d(
 
     if dataset_name == 'ICBM':
         datalist_path = os.path.join(base_directory, 'ICBM_cls_datalist.json')
+        input_channels = 1
         class_num = 4
     elif dataset_name == 'COVID-CT-MD':
         datalist_path = os.path.join(base_directory, 'COVID-CT-MD_cls_datalist.json')
+        input_channels = 1
         class_num = 3
+    elif dataset_name.startswith("fomo-task1"):
+        datalist_path = os.path.join(base_directory, f"{dataset_name}.json")
+        input_channels = 4
+        class_num = 2
     else:
         raise ValueError(f'Unsupported dataset "{dataset_name}"')
 
@@ -215,7 +221,7 @@ def make_classification_dataset_3d(
     val_dataset = PersistentDataset(val_datalist, transform=val_transforms, cache_dir=cache_path)
     test_dataset = PersistentDataset(test_datalist, transform=val_transforms, cache_dir=cache_path)
 
-    return train_dataset, val_dataset, test_dataset, class_num
+    return train_dataset, val_dataset, test_dataset, input_channels, class_num
 
 
 def make_regression_dataset_3d(
@@ -246,7 +252,7 @@ def make_regression_dataset_3d(
     if dataset_name.startswith("fomo-task3"):
         datalist_path = os.path.join(base_directory, f"{dataset_name}.json")
         input_channels = 2
-        output_channels = 1
+        output_channels = 1        
     else:
         raise ValueError(f'Unsupported regression dataset: "{dataset_name}"')
 

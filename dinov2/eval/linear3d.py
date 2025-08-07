@@ -469,7 +469,7 @@ def run_eval_linear(
 
     # transforms, datasets, metric
     train_transform, val_transform = make_classification_transform_3d(dataset_name, image_size, min_int=-1.0)
-    train_dataset, val_dataset, test_dataset, num_classes = make_classification_dataset_3d(
+    train_dataset, val_dataset, test_dataset, input_channels, num_classes = make_classification_dataset_3d(
         dataset_name=dataset_name,
         dataset_percent=dataset_percent,
         base_directory=base_data_dir,
