@@ -1,23 +1,24 @@
 schema_version: 2024.04.01
 type: job
 spec:
-  name: dino3d-fomo-fold0-training-499
-  owner: dgm-ms-brain-mri/pedro-maciasgordaliza
-  description: '3D-DINO finetuning on FOMO dataset fold 0'
+  name: dino3d-fomo-task1-fold0
+  owner: dgm-ms-brain-mri/Jaume
+  description: 'DINOv2 linear evaluation (classification) on FOMO task 1 fold 0'
   image: nvidia-oci/saturncloud/saturn-python-pytorch:2024.08.01
   instance_type: 1xA100
   environment_variables:
     FOLD_NUMBER: "0"
     PYTHONPATH: "/home/jovyan/workspace/3D-DINO"
-    BASE_DATA_DIR: "/home/jovyan/workspace/3D-DINO/dino_datasets/fomo_experiments/fomo-task2_2channels_mimic"
-    OUTPUT_DIR: "/home/jovyan/shared/pedro-maciasgordaliza/fomo25/finetuning_exps/mimic_preprocess/task2/2channels/fold_0/"
-    CACHE_DIR: "/home/jovyan/workspace/3D-DINO/finetuning_exps/mimic_preprocess/task2/2channels/fold_0_cache/"
+    DATASET_NAME: "fomo-task1-4ch-mimic_fold_0"
+    SPLITS_FOLDER: "/home/jovyan/shared/pedro-maciasgordaliza/fomo25/data/splits_final/task1/dino_experiments/fomo-task1-4ch-mimic/"
+    BASE_DATA_DIR: "/home/jovyan/shared/pedro-maciasgordaliza/fomo25/data/splits_final/task1/dino_experiments/fomo-task1-4ch-mimic/"
+    OUTPUT_DIR: "/home/jovyan/shared/pedro-maciasgordaliza/fomo25/finetuning_exps/mimic_preprocess/task1/4channels/fold_0/"
+    CACHE_DIR: "/home/jovyan/workspace/3D-DINO/finetuning_exps/mimic_preprocess/task1/4channels/fold_0_cache/"
     PRETRAINED_WEIGHTS: "/home/jovyan/shared/pedro-maciasgordaliza/fomo25/Dino3d_last-models/highres_teacher_checkpoint.pth"
-    DATASET_NAME: "fomo-task2_2channels_mimic_fold_0"
   working_directory: /home/jovyan/workspace/3D-DINO
   token_scope: job:{self}:dask:write
   git_repositories:
-    - url: git@github.com:PeterMcGor/3D-DINO.git
+    - url: git@github.com:jbanusco/3D-DINO.git
       path: /home/jovyan/workspace/3D-DINO
       public: false
   secrets: []
@@ -25,71 +26,59 @@ spec:
     - owner: dgm-ms-brain-mri/pedro-maciasgordaliza
       path: /home/jovyan/shared/pedro-maciasgordaliza/fomo25
       name: fomo25
-    - owner: dgm-ms-brain-mri/pedro-maciasgordaliza
-      path: /home/jovyan/shared/pedro-maciasgordaliza/openmind-dataset
-      name: openmind-dataset
-    - owner: dgm-ms-brain-mri/pedro-maciasgordaliza
-      path: /home/jovyan/shared/pedro-maciasgordaliza/ms-data
-      name: ms-data
   command: |
     bash -c "
     echo '=================================================' &&
-    echo 'DINO Training Job - Fold 0' &&
+    echo 'DINOv2 Linear Regression Job - Fold 0' &&
     echo '=================================================' &&
-    
+
     echo 'Step 1: Setup git repository...' &&
-    git fetch origin fomo-finetuning-t2 &&
-    git checkout fomo-finetuning-t2 &&
-    git reset --hard origin/fomo-finetuning-t2 &&
-    
+    cd /home/jovyan/workspace/3D-DINO &&
+
     echo 'Step 2: Create conda environment...' &&
     conda create -n dino3d python=3.9 -y &&
-    
+
     echo 'Step 3: Initialize and activate environment...' &&
     conda init bash &&
     source ~/.bashrc &&
     conda activate dino3d &&
-    
+
     echo 'Step 4: Install requirements...' &&
     pip install -r requirements.txt --quiet &&
-    
+
     echo 'Step 5: Create output directories...' &&
     mkdir -p $OUTPUT_DIR &&
     mkdir -p $CACHE_DIR &&
-    
+
     echo 'Step 6: Verify environment...' &&
     echo 'Current conda environment:' $CONDA_DEFAULT_ENV &&
     python --version &&
     python -c 'import torch; print(\"PyTorch version:\", torch.__version__); print(\"CUDA available:\", torch.cuda.is_available())' &&
-    
+
     echo 'Step 7: Starting DINO training - Fold 0...' &&
-    echo 'Training parameters:' &&
-    echo '  - Fold: 0' &&
-    echo '  - Dataset: $DATASET_NAME' &&
-    echo '  - Output dir: $OUTPUT_DIR' &&
-    echo '  - Cache dir: $CACHE_DIR' &&
-    
-    python dinov2/eval/segmentation3d.py \
-      --config-file 'dinov2/configs/train/vit3d_highres.yaml' \
-      --output-dir '$OUTPUT_DIR' \
-      --pretrained-weights '$PRETRAINED_WEIGHTS' \
-      --dataset-name '$DATASET_NAME' \
+
+    python dinov2/eval/linear3d_class.py \
+      --config-file dinov2/configs/train/vit3d_highres.yaml \
+      --output-dir $OUTPUT_DIR \
+      --pretrained-weights $PRETRAINED_WEIGHTS \
+      --dataset-name $DATASET_NAME \
       --dataset-percent 100 \
-      --base-data-dir '$BASE_DATA_DIR' \
-      --segmentation-head 'ViTAdapterUNETR' \
-      --epochs 500 \
-      --epoch-length 30 \
-      --eval-iters 250 \
-      --warmup-iters 1500 \
+      --base-data-dir $BASE_DATA_DIR \
+      --epochs 100 \
+      --epoch-length 125 \
+      --save-checkpoint-frequency 50 \
+      --eval-period-iterations 50 \
       --image-size 112 \
       --batch-size 2 \
       --num-workers 15 \
-      --learning-rate 1e-4 \
-      --cache-dir '$CACHE_DIR' \
-      --resize-scale 1.0 &&
-    
+      --dataset-seed 0 \
+      --learning-rate-fm 1e-4 \
+      --train-feature-model False \
+      --resize-scale 1.0 \
+      --cache-dir $CACHE_DIR &&
+
     echo '=================================================' &&
-    echo 'DINO training for fold 0 completed!' &&
+    echo 'DINO regression training for fold 0 completed!' &&
     echo 'Check output directory: $OUTPUT_DIR' &&
     echo '================================================='
     "
