@@ -45,6 +45,26 @@ class ModelWithIntermediateLayers(nn.Module):
         return features
 
 
+class MultiChannelFeatureModel(nn.Module):
+    def __init__(self, vit_model, input_channels, n_last_blocks, autocast_ctx):
+        super().__init__()
+        self.vit = vit_model
+        self.input_channels = input_channels
+        self.n_last_blocks = n_last_blocks
+        self.autocast_ctx = autocast_ctx
+
+    def forward(self, x):
+        # B, C, H, W, D → B*C, 1, H, W, D
+        B, C = x.shape[0], x.shape[1]
+        x = x.reshape(B * C, 1, *x.shape[2:])
+        with torch.inference_mode():
+            with self.autocast_ctx():
+                features = self.vit.get_intermediate_layers(
+                    x, self.n_last_blocks, return_class_token=True
+                )
+        return features
+
+
 @torch.inference_mode()
 def evaluate(
     model: nn.Module,

@@ -38,7 +38,7 @@ class AccuracyAveraging(Enum):
         return self.value
 
 
-def build_metric(metric_type: MetricType, *, num_classes: int, ks: Optional[tuple] = None):
+def build_metric(metric_type: MetricType, *, num_classes: int = 1, ks: Optional[tuple] = None):
     if metric_type.accuracy_averaging is not None:
         return build_topk_accuracy_metric(
             average_type=metric_type.accuracy_averaging,

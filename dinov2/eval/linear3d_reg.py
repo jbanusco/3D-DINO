@@ -24,7 +24,7 @@ import dinov2.distributed as distributed
 from dinov2.eval.metrics import MetricType, build_metric
 from dinov2.eval.setup import get_args_parser as get_setup_args_parser
 from dinov2.eval.setup import setup_and_build_model_3d
-from dinov2.eval.utils import ModelWithIntermediateLayers, evaluate_dict
+from dinov2.eval.utils import ModelWithIntermediateLayers, evaluate_dict, MultiChannelFeatureModel
 from dinov2.logging import MetricLogger
 
 
@@ -125,6 +125,12 @@ def get_args_parser(
         "--dataset-seed",
         type=int,
         help="seed for dataset split",
+    )
+    parser.add_argument(
+        "--resize-scale",
+        type=float,
+        help="Scale factor for resizing the input images",
+        default=1.0,
     )
     parser.set_defaults(
         dataset_name='ICBM',
@@ -287,9 +293,7 @@ def evaluate_linear_regressors(
     best_regressor = ""
     for i, (regressor_string, metric) in enumerate(results_dict_temp.items()):
         logger.info(f"{prefixstring} -- Regressor: {regressor_string} * {metric}")
-        if (
-            best_regressor_on_val is None and metric["mae"].item() < min_error:
-        ) or regressor_string == best_regressor_on_val:
+        if (best_regressor_on_val is None and metric["mae"].item() < min_error) or regressor_string == best_regressor_on_val:
             min_mae = metric["mae"].item()
             best_regressor = regressor_string
 
@@ -466,13 +470,16 @@ def run_eval_linear(
     dataset_seed,
     resume=True,
     regressor_fpath=None,
+    resize_scale=1.0,
 ):
     seed = 0
 
     # === TODO: Update this ===
-    # transforms, datasets, metric
-    train_transform, val_transform = make_regression_transform_3d(dataset_name, image_size, min_int=-1.0)
-    train_dataset, val_dataset, test_dataset, num_outputs = make_regression_dataset_3d(
+    # transforms, datasets, metric\
+    # print("EEEEH")
+    # print(image_size)
+    train_transform, val_transform = make_regression_transform_3d(dataset_name, image_size, min_int=-1.0, resize_scale=1.0)
+    train_dataset, val_dataset, test_dataset, input_channels, num_outputs = make_regression_dataset_3d(
         dataset_name=dataset_name,
         dataset_percent=dataset_percent,
         base_directory=base_data_dir,
@@ -489,7 +496,9 @@ def run_eval_linear(
     n_last_blocks_list = [1, 4]
     n_last_blocks = max(n_last_blocks_list)
     autocast_ctx = partial(torch.cuda.amp.autocast, enabled=True, dtype=autocast_dtype)
-    feature_model = ModelWithIntermediateLayers(model, n_last_blocks, autocast_ctx)
+    feature_model = MultiChannelFeatureModel(model, input_channels=input_channels, n_last_blocks=n_last_blocks, autocast_ctx=autocast_ctx)
+    # feature_model = ModelWithIntermediateLayers(model, n_last_blocks, autocast_ctx)
+    # feature_model = ViTAdapter(feature_model, input_channels) # ===> This handles multi-channel
     sample_output = feature_model(train_dataset[0]['image'].unsqueeze(0).cuda())
     linear_regressors, optim_param_groups = setup_linear_regressor(
         sample_output,
@@ -606,6 +615,7 @@ def main(args):
         resume=not args.no_resume,
         regressor_fpath=args.regressor_fpath,
         dataset_seed=args.dataset_seed,
+        resize_scale=args.resize_scale,
     )
     return 0
 

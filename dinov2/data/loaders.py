@@ -243,12 +243,10 @@ def make_regression_dataset_3d(
         train_dataset, val_dataset, test_dataset, and input_channels
     """
 
-    if dataset_name == 'ICBM':
-        datalist_path = os.path.join(base_directory, 'ICBM_regression_datalist.json')
-        input_channels = 1
-    elif dataset_name == 'FOMO':
-        datalist_path = os.path.join(base_directory, 'fomo_fold_0.json')  # Or use fold name format
-        input_channels = 3  # since you have image1, image2, image3
+    if dataset_name.startswith("fomo-task3"):
+        datalist_path = os.path.join(base_directory, f"{dataset_name}.json")
+        input_channels = 2
+        output_channels = 1
     else:
         raise ValueError(f'Unsupported regression dataset: "{dataset_name}"')
 
@@ -274,7 +272,7 @@ def make_regression_dataset_3d(
     val_dataset = PersistentDataset(val_datalist, transform=val_transforms, cache_dir=cache_path)
     test_dataset = PersistentDataset(test_datalist, transform=val_transforms, cache_dir=cache_path)
 
-    return train_dataset, val_dataset, test_dataset, input_channels
+    return train_dataset, val_dataset, test_dataset, input_channels, output_channels
 
 
 

@@ -6,8 +6,12 @@
 
 from monai.transforms import (
     Compose,
+    EnsureChannelFirstd,
     CropForegroundd,
     LoadImaged,
+    ConcatItemsd,
+    DeleteItemsd,
+    Spacingd,
     Orientationd,
     RandFlipd,
     RandShiftIntensityd,
@@ -23,9 +27,17 @@ from monai.transforms import (
     RandGaussianNoised,
     RandGaussianSmoothd,
     RandGaussianSharpend,
+    SpatialPadd,
     Lambdad
 )
 from torchio.transforms import RandomAffine
+import os
+
+
+def load_label_from_txt(x):
+    if isinstance(x, str) and os.path.isfile(x):
+        return float(open(x, "r").read().strip())
+    return float(x)
 
 
 def make_classification_transform_3d(dataset_name: str, image_size: int, min_int: float):
@@ -147,3 +159,109 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
 
     return train_transforms, val_transforms
 
+
+
+
+def make_regression_transform_3d(dataset_name: str, image_size: int, min_int: float, resize_scale: float = 1.0):
+    """
+    Create a training and validation transform for 3D regression tasks.
+
+    Args:
+        dataset_name: Name of the regression dataset (e.g., ICBM).
+        image_size: Size of the image to be used for training.
+        min_int: Minimum intensity value to map the image to.
+    Returns:
+        Training and validation transforms.
+    """
+
+    if image_size == 0:
+        resize_transform = Identityd(keys=["image"])
+    else:
+        resize_transform = Resized(keys=["image"], spatial_size=(image_size, image_size, image_size), mode="trilinear")
+
+    if dataset_name == 'ICBM':
+        train_transforms = Compose(
+            [
+                LoadImaged(keys=["image"], ensure_channel_first=True),
+                EnsureTyped(keys=["image", "label"]),
+                Orientationd(keys=["image"], axcodes="RAS"),
+                ScaleIntensityRangePercentilesd(
+                    keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
+                ),
+                CropForegroundd(keys=["image"], source_key="image", select_fn=lambda x: x > min_int),
+                resize_transform,
+                OneOf(transforms=[
+                    RandomAffine(include=["image"], p=0.3, degrees=(30, 30, 30),
+                                 scales=(0.8, 1.25), translation=(0.1, 0.1, 0.1),
+                                 default_pad_value=min_int),
+                    RandAdjustContrastd(keys=["image"], prob=0.3, gamma=(0.5, 2)),
+                    RandGaussianSharpend(keys=["image"], prob=0.3),
+                    RandGaussianSmoothd(keys=["image"], prob=0.3),
+                    RandGaussianNoised(keys=["image"], prob=0.3, std=0.002),
+                ]),
+                RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+                RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
+            ]
+        )
+        val_transforms = Compose(
+            [
+                LoadImaged(keys=["image"], ensure_channel_first=True),
+                EnsureTyped(keys=["image", "label"]),
+                Orientationd(keys=["image"], axcodes="RAS"),
+                ScaleIntensityRangePercentilesd(
+                    keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
+                ),
+                CropForegroundd(keys=["image"], source_key="image", select_fn=lambda x: x > min_int),
+                resize_transform,
+            ]
+        )
+    elif dataset_name.startswith("fomo-task3"):        
+        train_transforms = Compose([
+            # LoadImaged(keys=["image1", "image2"]),
+            # EnsureChannelFirstd(keys=["image1", "image2"]),
+            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
+            LoadImaged(keys=["image1", "image2"], ensure_channel_first=True),
+            ConcatItemsd(keys=["image1", "image2"], name="image", dim=0),
+            DeleteItemsd(keys=["image1", "image2"]),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            Spacingd(
+                keys=["image"],
+                pixdim=(1.0 / resize_scale, 1.0 / resize_scale, 1.0 / resize_scale),
+                mode=("bilinear"),
+            ),
+            ScaleIntensityRangePercentilesd(
+                keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1.0, clip=True, channel_wise=True
+            ),
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode="constant"),
+            RandSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size), random_size=False),
+            RandFlipd(keys=["image"], prob=0.5, spatial_axis=0),
+            RandFlipd(keys=["image"], prob=0.5, spatial_axis=1),
+            RandFlipd(keys=["image"], prob=0.5, spatial_axis=2),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+            RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
+            Lambdad(keys="label", func=load_label_from_txt),
+        ])
+        val_transforms = Compose([
+            # LoadImaged(keys=["image1", "image2"]),
+            # EnsureChannelFirstd(keys=["image1", "image2"]),
+            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
+            LoadImaged(keys=["image1", "image2"], ensure_channel_first=True),
+            ConcatItemsd(keys=["image1", "image2"], name="image", dim=0),
+            DeleteItemsd(keys=["image1", "image2"]),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            Spacingd(
+                keys=["image"],
+                pixdim=(1.0 / resize_scale, 1.0 / resize_scale, 1.0 / resize_scale),
+                mode=("bilinear"),
+            ),
+            ScaleIntensityRangePercentilesd(
+                keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
+            ),
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), value=min_int),
+            CenterSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size)),
+            Lambdad(keys="label", func=load_label_from_txt),
+        ])
+    else:
+        raise ValueError(f'Unknown dataset for regression: {dataset_name}')
+
+    return train_transforms, val_transforms
