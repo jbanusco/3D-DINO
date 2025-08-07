@@ -12,3 +12,7 @@ cufile.log
 *.swp
 
 .vscode/
+
+# Pytorch cache experiments
+finetuning_exps
+*.pt
