@@ -24,8 +24,20 @@ import dinov2.distributed as distributed
 from dinov2.eval.metrics import MetricType, build_metric
 from dinov2.eval.setup import get_args_parser as get_setup_args_parser
 from dinov2.eval.setup import setup_and_build_model_3d
-from dinov2.eval.utils import ModelWithIntermediateLayers, evaluate_dict, MultiChannelFeatureModel
+from dinov2.eval.utils import ModelWithIntermediateLayers, evaluate_dict, MultiChannelFeatureModel, ViTAdapterFeatureWrapper
+# from dinov2.eval.segmentation_3d.vit_adapter import ViTAdapter
 from dinov2.logging import MetricLogger
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 logger = logging.getLogger("dinov2")
@@ -132,6 +144,18 @@ def get_args_parser(
         help="Scale factor for resizing the input images",
         default=1.0,
     )
+    parser.add_argument(
+        "--train-feature-model",
+        type=str2bool,
+        help="Train feature model",
+        default=False,
+    )
+    parser.add_argument(
+        "--learning-rate-fm",
+        type=float,
+        help="LR of feature model",
+        default=1e-4,
+    )
     parser.set_defaults(
         dataset_name='ICBM',
         epochs=10,
@@ -219,8 +243,8 @@ class LinearPostprocessor(nn.Module):
     def forward(self, samples, targets):
         preds = self.linear_regressor(samples)
         return {
-            "preds": preds,
-            "target": targets,
+            "preds": preds.squeeze(),
+            "target": targets.squeeze(),
         }
 
 
@@ -365,7 +389,14 @@ def eval_linear(
 
         # TODO: The loss is defined here!!
         # losses = {f"loss_{k}": nn.CrossEntropyLoss()(v, labels) for k, v in outputs.items()}
-        losses = {f"loss_{k}": nn.MSELoss()(v.squeeze(), labels.float()) for k, v in outputs.items()}
+        # If x was shaped [2, 2, 112, 112, 112], it becomes [4, 1, 112, 112, 112] : IMPORTANT FOR MULTI-CHANNEL
+        # print("V") 
+        # print(outputs)
+        # for k, v in outputs.items():
+            # print(v, v.shape)
+        # print("labels")
+        # print(labels, labels.shape)
+        losses = {f"loss_{k}": nn.MSELoss()(v, labels.float()) for k, v in outputs.items()}
         loss = sum(losses.values())
 
         # compute the gradients
@@ -471,6 +502,8 @@ def run_eval_linear(
     resume=True,
     regressor_fpath=None,
     resize_scale=1.0,
+    train_feature_model=False,
+    learning_rate_fm=1e-4,
 ):
     seed = 0
 
@@ -496,9 +529,28 @@ def run_eval_linear(
     n_last_blocks_list = [1, 4]
     n_last_blocks = max(n_last_blocks_list)
     autocast_ctx = partial(torch.cuda.amp.autocast, enabled=True, dtype=autocast_dtype)
-    feature_model = MultiChannelFeatureModel(model, input_channels=input_channels, n_last_blocks=n_last_blocks, autocast_ctx=autocast_ctx)
+    # feature_model = MultiChannelFeatureModel(model, input_channels=input_channels, n_last_blocks=n_last_blocks, autocast_ctx=autocast_ctx)
     # feature_model = ModelWithIntermediateLayers(model, n_last_blocks, autocast_ctx)
-    # feature_model = ViTAdapter(feature_model, input_channels) # ===> This handles multi-channel
+    # feature_model = ViTAdapter(model, input_channels) # ===> This handles multi-channel
+    feature_model = ViTAdapterFeatureWrapper(
+        vit_model=model,
+        input_channels=input_channels,
+        n_last_blocks=n_last_blocks,
+        autocast_ctx=autocast_ctx,
+    )
+
+    if train_feature_model:
+        feature_model.train()
+    else:
+        # Freeze feature extractor if needed
+        feature_model.eval()
+        for param in feature_model.parameters():
+            param.requires_grad = False
+
+    # Move feature model to GPU
+    feature_model = feature_model.cuda()
+
+    # Sample output to create regressors
     sample_output = feature_model(train_dataset[0]['image'].unsqueeze(0).cuda())
     linear_regressors, optim_param_groups = setup_linear_regressor(
         sample_output,
@@ -508,6 +560,10 @@ def run_eval_linear(
         num_outputs,
     )
 
+    # Add params of the feature model
+    optim_param_groups.append({"params": feature_model.parameters(), "lr": learning_rate_fm})
+
+    # Setup optimizer
     optimizer = torch.optim.SGD(optim_param_groups, momentum=0.9, weight_decay=0)
     max_iter = epochs * epoch_length
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max_iter, eta_min=0)
@@ -616,6 +672,8 @@ def main(args):
         regressor_fpath=args.regressor_fpath,
         dataset_seed=args.dataset_seed,
         resize_scale=args.resize_scale,
+        train_feature_model=args.train_feature_model,
+        learning_rate_fm=args.learning_rate_fm,
     )
     return 0
 

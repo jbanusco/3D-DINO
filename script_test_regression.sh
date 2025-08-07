@@ -58,7 +58,8 @@ python dinov2/eval/linear3d_reg.py \
   --batch-size 2 \
   --num-workers 15 \
   --dataset-seed 0 \
-  --learning-rates 1e-4 \
+  --learning-rate-fm 1e-4 \
+  --train-feature-model False \
   --resize-scale 1.0 \
   --cache-dir ${CACHE_DIR}
 

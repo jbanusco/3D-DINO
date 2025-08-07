@@ -14,6 +14,7 @@ from torchmetrics import MetricCollection
 from dinov2.data import DictDatasetWithEnumeratedTargets, SamplerType, make_data_loader
 import dinov2.distributed as distributed
 from dinov2.logging import MetricLogger
+from dinov2.eval.segmentation_3d.vit_adapter import ViTAdapter
 
 
 logger = logging.getLogger("dinov2")
@@ -59,10 +60,51 @@ class MultiChannelFeatureModel(nn.Module):
         x = x.reshape(B * C, 1, *x.shape[2:])
         with torch.inference_mode():
             with self.autocast_ctx():
-                features = self.vit.get_intermediate_layers(
+                class_tokens, patch_tokens = self.vit.get_intermediate_layers(
                     x, self.n_last_blocks, return_class_token=True
                 )
+
+        # Use the patch tokens
+        features = patch_tokens
+        
+        # [B*C] → [B] - back to per sample features
+        features = [f.reshape(B, C, *f.shape[1:]) for f in features]
+        
+        # Aggregate: e.g., mean over channels
+        features = [f.mean(dim=1) for f in features]  # Now shape: [B, ...]
+        
         return features
+
+
+class ViTAdapterFeatureWrapper(nn.Module):
+    def __init__(self, vit_model, input_channels, n_last_blocks, autocast_ctx):
+        super().__init__()
+        self.adapter = ViTAdapter(vit_model, input_channels)
+        self.n_last_blocks = n_last_blocks
+        self.autocast_ctx = autocast_ctx
+
+    def forward(self, x):
+        with torch.inference_mode():
+            # with self.autocast_ctx():
+            features = self.adapter(x)  # returns [f1, f2, f3, f4]
+
+        # Simulate (patch_tokens, class_tokens) format
+        outputs = []
+        for feat in features[-self.n_last_blocks:]:
+            B, C, H, W, D = feat.shape
+
+            # Flatten spatial dims -- grid-like fts, spatial
+            patch_tokens = feat.flatten(2).transpose(1, 2)  # [B, N_patches, C]
+
+            # Use mean of all spatial tokens as the "class token" -- summarises context
+            # class_token = patch_tokens.mean(dim=1, keepdim=True)  # [B, 1, C]
+            class_token = patch_tokens.mean(dim=1)  # [B, C]
+
+            outputs.append((patch_tokens, class_token))
+
+        return outputs
+
+
 
 
 @torch.inference_mode()
