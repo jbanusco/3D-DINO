@@ -164,7 +164,8 @@ def get_args_parser(
         epoch_length=1250,
         save_checkpoint_frequency=20,
         eval_period_iterations=1250,
-        learning_rates=[1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1],
+        # learning_rates=[1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1],
+        learning_rates=[1e-3, 5e-4, 1e-4],
         classifier_fpath=None,
         image_size=96,
         model_name='',
@@ -248,8 +249,12 @@ class LinearPostprocessor(nn.Module):
         }
 
 
-def scale_lr(learning_rates, batch_size):
-    return learning_rates * (batch_size * distributed.get_global_size()) / 256.0
+# def scale_lr(learning_rates, batch_size):
+#     return learning_rates * (batch_size * distributed.get_global_size()) / 256.0
+
+
+# Disable lr scaling
+def scale_lr(lr, _): return lr
 
 
 def setup_linear_regressor(sample_output, n_last_blocks_list, learning_rates, batch_size, num_outputs=1):
@@ -404,6 +409,8 @@ def eval_linear(
         loss.backward()
 
         # step
+        torch.nn.utils.clip_grad_norm_(feature_model.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(linear_regressors.parameters(), max_norm=1.0)
         optimizer.step()
         scheduler.step()
 
