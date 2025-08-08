@@ -257,6 +257,17 @@ class LinearPostprocessor(nn.Module):
 def scale_lr(lr, _): return lr
 
 
+def sanitize_for_json(obj):
+    if isinstance(obj, torch.Tensor):
+        return obj.tolist() if obj.dim() > 0 else obj.item()
+    elif isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(v) for v in obj]
+    else:
+        return obj
+
+
 def setup_linear_regressor(sample_output, n_last_blocks_list, learning_rates, batch_size, num_outputs=1):
     linear_regressor_dict = nn.ModuleDict()
     optim_param_groups = []
@@ -346,7 +357,9 @@ def evaluate_linear_regressors(
         with open(metrics_file_path, "a") as f:
             f.write(f"iter: {iteration}\n")
             for k, v in results_dict.items():
-                f.write(json.dumps({k: v}) + "\n")
+                v_sanitized = sanitize_for_json(v)
+                f.write(json.dumps({k: v_sanitized}) + "\n")
+                # f.write(json.dumps({k: v}) + "\n")
             f.write("\n")
 
     return results_dict
