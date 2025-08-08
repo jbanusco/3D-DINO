@@ -50,6 +50,9 @@ spec:
     mkdir -p $OUTPUT_DIR &&
     mkdir -p $CACHE_DIR &&
 
+    echo 'Cleaning MONAI cache...' &&
+    rm -rf $CACHE_DIR/* &&
+
     echo 'Step 6: Verify environment...' &&
     echo 'Current conda environment:' $CONDA_DEFAULT_ENV &&
     python --version &&

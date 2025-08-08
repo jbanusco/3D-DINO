@@ -4,36 +4,36 @@ export SATURN_TOKEN=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiYXRsYXMiLCJ
 pip install saturn-client
 
 # --- Run fold 0
-fold0_yaml=/home/jovyan/workspace/3D-DINO/task3_fold0_mimic_training.yaml
-sc apply ${fold0_yaml} --start
+# fold0_yaml=/home/jovyan/workspace/3D-DINO/task3_fold0_mimic_training.yaml
+# sc apply ${fold0_yaml} --start
 
-fold0_yaml=/home/jovyan/workspace/3D-DINO/task1_fold0_mimic_training.yaml
-sc apply ${fold0_yaml} --start
+# fold0_yaml=/home/jovyan/workspace/3D-DINO/task1_fold0_mimic_training.yaml
+# sc apply ${fold0_yaml} --start
 
-# --- Run fold 1
-fold1_yaml=/home/jovyan/workspace/3D-DINO/task3_fold1_mimic_training.yaml
-sc apply ${fold1_yaml} --start
+# # --- Run fold 1
+# fold1_yaml=/home/jovyan/workspace/3D-DINO/task3_fold1_mimic_training.yaml
+# sc apply ${fold1_yaml} --start
 
-fold1_yaml=/home/jovyan/workspace/3D-DINO/task1_fold1_mimic_training.yaml
-sc apply ${fold1_yaml} --start
+# fold1_yaml=/home/jovyan/workspace/3D-DINO/task1_fold1_mimic_training.yaml
+# sc apply ${fold1_yaml} --start
 
 # --- Run fold 2
-fold2_yaml=/home/jovyan/workspace/3D-DINO/task3_fold2_mimic_training.yaml
-sc apply ${fold2_yaml} --start
+# fold2_yaml=/home/jovyan/workspace/3D-DINO/task3_fold2_mimic_training.yaml
+# sc apply ${fold2_yaml} --start
 
 fold2_yaml=/home/jovyan/workspace/3D-DINO/task1_fold2_mimic_training.yaml
 sc apply ${fold2_yaml} --start
 
 # --- Run fold 3
-fold3_yaml=/home/jovyan/workspace/3D-DINO/task3_fold3_mimic_training.yaml
-sc apply ${fold3_yaml} --start
+# fold3_yaml=/home/jovyan/workspace/3D-DINO/task3_fold3_mimic_training.yaml
+# sc apply ${fold3_yaml} --start
 
-fold3_yaml=/home/jovyan/workspace/3D-DINO/task1_fold3_mimic_training.yaml
-sc apply ${fold3_yaml} --start
+# fold3_yaml=/home/jovyan/workspace/3D-DINO/task1_fold3_mimic_training.yaml
+# sc apply ${fold3_yaml} --start
 
-# --- Run fold 4
-fold4_yaml=/home/jovyan/workspace/3D-DINO/task3_fold4_mimic_training.yaml
-sc apply ${fold4_yaml} --start
+# # --- Run fold 4
+# fold4_yaml=/home/jovyan/workspace/3D-DINO/task3_fold4_mimic_training.yaml
+# sc apply ${fold4_yaml} --start
 
-fold4_yaml=/home/jovyan/workspace/3D-DINO/task1_fold4_mimic_training.yaml
-sc apply ${fold4_yaml} --start
+# fold4_yaml=/home/jovyan/workspace/3D-DINO/task1_fold4_mimic_training.yaml
+# sc apply ${fold4_yaml} --start
