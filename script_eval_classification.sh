@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# === Static config ===
+DINO_PATH="/home/jovyan/workspace/3D-DINO"
+CONFIG_FILE="dinov2/configs/train/vit3d_highres.yaml"
+SPLITS_FOLDER="/home/jovyan/shared/pedro-maciasgordaliza/fomo25/data/splits_final/task1/dino_experiments/fomo-task1-4ch-mimic"
+OUTPUT_ROOT="/home/jovyan/shared/pedro-maciasgordaliza/fomo25/finetuning_exps/mimic_preprocess/task1/4channels"
+CACHE_ROOT="/home/jovyan/workspace/3D-DINO/finetuning_exps/mimic_preprocess/task1/4channels"
+PRETRAINED_WEIGHTS="/home/jovyan/shared/pedro-maciasgordaliza/fomo25/Dino3d_last-models/highres_teacher_checkpoint.pth"
+
+# Ground-truth labels directory (adjust this to the correct GT path!)
+# GT_LABELS_DIR="/home/jovyan/shared/pedro-maciasgordaliza/fomo25/finetuning_data_preprocess/mimic-pretreaining-preprocessing/Task001_FOMO1"
+
+# Inference knobs
+IMAGE_SIZE=112
+BATCH_SIZE=2
+NUM_WORKERS=15
+DATASET_PERCENT=100
+DATASET_SEED=0
+RESIZE_SCALE=1.0
+
+# === Env ===
+conda init bash >/dev/null
+source ~/.bashrc
+conda activate dino3d
+
+echo "[INFO] Using Python: $(python --version)"
+echo "[INFO] CUDA available: $(python - <<'PY'
+import torch
+print(torch.cuda.is_available())
+PY
+)"
+
+# === Loop folds ===
+for FOLD in 0 1 2 3 4; do
+  echo "===================== FOLD ${FOLD} ====================="
+
+  DATASET_NAME="fomo-task1-4ch-mimic_fold_${FOLD}"
+  OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}"
+  CACHE_DIR="${CACHE_ROOT}/fold_${FOLD}_cache"
+
+  # Prep dirs
+  mkdir -p "${OUTPUT_DIR}" "${CACHE_DIR}"
+
+  echo "[FOLD ${FOLD}] cd ${DINO_PATH}"
+  cd "${DINO_PATH}"
+  export PYTHONPATH="${DINO_PATH}:${PYTHONPATH}"
+
+  echo "[FOLD ${FOLD}] Running inference..."
+  # python dinov2/eval/inference3d_class.py \
+  #   --config-file "${CONFIG_FILE}" \
+  #   --pretrained-weights "${PRETRAINED_WEIGHTS}" \
+  #   --output-dir "${OUTPUT_DIR}" \
+  #   --dataset-name "${DATASET_NAME}" \
+  #   --base-data-dir "${SPLITS_FOLDER}" \
+  #   --cache-dir "${CACHE_DIR}" \
+  #   --image-size "${IMAGE_SIZE}" \
+  #   --batch-size "${BATCH_SIZE}" \
+  #   --num-workers "${NUM_WORKERS}" \
+  #   --dataset-percent "${DATASET_PERCENT}" \
+  #   --dataset-seed "${DATASET_SEED}" \
+  #   --resize-scale "${RESIZE_SCALE}"
+
+  python dinov2/eval/inference3d_class.py \
+  --config-file ${CONFIG_FILE} \
+  --output-dir ${OUTPUT_DIR} \
+  --dataset-name ${DATASET_NAME} \
+  --base-data-dir ${SPLITS_FOLDER} \
+  --cache-dir ${CACHE_DIR} \
+  --pretrained-weights ${PRETRAINED_WEIGHTS}
+
+
+  # Paths for evaluation
+  PRED_DIR="${OUTPUT_DIR}/predictions_eval_format"
+  SAVE_DIR="${OUTPUT_DIR}/eval_results"
+  mkdir -p "${SAVE_DIR}"
+
+  echo "[FOLD ${FOLD}] Running evaluation..."
+  python /home/jovyan/workspace/container-validator/task1_classification/evaluation/clf_evaluator.py \
+    "${PRED_DIR}" \
+    "${PRED_DIR}" \
+    -o "${SAVE_DIR}" \
+    --prefix "fomo-task1-fold${FOLD}"
+
+  echo "[FOLD ${FOLD}] ✔ Done. Results -> ${SAVE_DIR}"
+  echo
+done
+
+echo "===================== ALL FOLDS DONE ====================="
