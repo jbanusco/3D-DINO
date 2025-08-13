@@ -414,7 +414,8 @@ def eval_linear(
             # print(v, v.shape)
         # print("labels")
         # print(labels, labels.shape)
-        losses = {f"loss_{k}": nn.MSELoss()(v, labels.float()) for k, v in outputs.items()}
+        # losses = {f"loss_{k}": nn.MSELoss()(v, labels.float()) for k, v in outputs.items()}
+        losses = {f"loss_{k}":  torch.nn.SmoothL1Loss(beta=10.0)(v, labels.float()) for k, v in outputs.items()}
         loss = sum(losses.values())
 
         # compute the gradients
