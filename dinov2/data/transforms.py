@@ -155,9 +155,6 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
         )
     elif dataset_name.startswith("fomo-task1"):        
         train_transforms = Compose([
-            # LoadImaged(keys=["image1", "image2"]),
-            # EnsureChannelFirstd(keys=["image1", "image2"]),
-            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
             LoadImaged(keys=["image1", "image2", "image3", "image4"], ensure_channel_first=True),
             ConcatItemsd(keys=["image1", "image2", "image3", "image4"], name="image", dim=0),
             DeleteItemsd(keys=["image1", "image2", "image3", "image4"]),
@@ -170,7 +167,7 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
             ScaleIntensityRangePercentilesd(
                 keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1.0, clip=True, channel_wise=True
             ),
-            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode="constant"),
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode=min_int),            
             RandSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size), random_size=False),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=0),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=1),
@@ -180,9 +177,6 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
             Lambdad(keys="label", func=load_label_from_txt),
         ])
         val_transforms = Compose([
-            # LoadImaged(keys=["image1", "image2"]),
-            # EnsureChannelFirstd(keys=["image1", "image2"]),
-            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
             LoadImaged(keys=["image1", "image2", "image3", "image4"], ensure_channel_first=True),
             ConcatItemsd(keys=["image1", "image2", "image3", "image4"], name="image", dim=0),
             DeleteItemsd(keys=["image1", "image2", "image3", "image4"]),
@@ -196,7 +190,7 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
                 keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
             ),
             SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), value=min_int),
-            CenterSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size)),
+            # CenterSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size)),
             Lambdad(keys="label", func=load_label_from_txt),
         ])
     else:
@@ -262,9 +256,6 @@ def make_regression_transform_3d(dataset_name: str, image_size: int, min_int: fl
         )
     elif dataset_name.startswith("fomo-task3"):        
         train_transforms = Compose([
-            # LoadImaged(keys=["image1", "image2"]),
-            # EnsureChannelFirstd(keys=["image1", "image2"]),
-            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
             LoadImaged(keys=["image1", "image2"], ensure_channel_first=True),
             ConcatItemsd(keys=["image1", "image2"], name="image", dim=0),
             DeleteItemsd(keys=["image1", "image2"]),
@@ -277,7 +268,7 @@ def make_regression_transform_3d(dataset_name: str, image_size: int, min_int: fl
             ScaleIntensityRangePercentilesd(
                 keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1.0, clip=True, channel_wise=True
             ),
-            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode="constant"),
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode=min_int),
             RandSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size), random_size=False),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=0),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=1),
@@ -287,9 +278,6 @@ def make_regression_transform_3d(dataset_name: str, image_size: int, min_int: fl
             Lambdad(keys="label", func=load_label_from_txt),
         ])
         val_transforms = Compose([
-            # LoadImaged(keys=["image1", "image2"]),
-            # EnsureChannelFirstd(keys=["image1", "image2"]),
-            # Lambdad(keys="image", func=lambda x: torch.cat([x["image1"], x["image2"]], dim=0)),
             LoadImaged(keys=["image1", "image2"], ensure_channel_first=True),
             ConcatItemsd(keys=["image1", "image2"], name="image", dim=0),
             DeleteItemsd(keys=["image1", "image2"]),
@@ -303,7 +291,7 @@ def make_regression_transform_3d(dataset_name: str, image_size: int, min_int: fl
                 keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1, clip=True, channel_wise=True
             ),
             SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), value=min_int),
-            CenterSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size)),
+            # CenterSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size)),
             Lambdad(keys="label", func=load_label_from_txt),
         ])
     else:

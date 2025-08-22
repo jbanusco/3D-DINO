@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
+from monai.inferers import sliding_window_inference
 
 from dinov2.data import SamplerType, make_data_loader, make_classification_dataset_3d
 from dinov2.data.transforms import make_classification_transform_3d
@@ -409,14 +410,6 @@ def eval_linear(
 
         # TODO: The loss is defined here!!
         losses = {f"loss_{k}": nn.CrossEntropyLoss()(v, labels.long()) for k, v in outputs.items()}
-        # If x was shaped [2, 2, 112, 112, 112], it becomes [4, 1, 112, 112, 112] : IMPORTANT FOR MULTI-CHANNEL
-        # print("V") 
-        # print(outputs)
-        # for k, v in outputs.items():
-            # print(v, v.shape)
-        # print("labels")
-        # print(labels, labels.shape)
-        # losses = {f"loss_{k}": nn.MSELoss()(v, labels.float()) for k, v in outputs.items()}
         loss = sum(losses.values())
 
         # compute the gradients
@@ -598,10 +591,10 @@ def run_eval_linear(
         batch_size=batch_size,
         num_workers=num_workers,
         shuffle=True,
-        seed=seed,
+        seed=0,
         sampler_type=SamplerType.SHARDED_INFINITE,
         sampler_advance=start_iter,
-        drop_last=True,
+        drop_last=False,
         persistent_workers=True,
     )
     val_data_loader = make_data_loader(

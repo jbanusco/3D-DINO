@@ -5,6 +5,7 @@ import torch
 from functools import partial
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 from pathlib import Path
+from monai.inferers import sliding_window_inference
 
 from dinov2.eval.linear3d_class import remove_ddp_wrapper
 from dinov2.eval.utils import ModelWithIntermediateLayers, evaluate_dict, MultiChannelFeatureModel, ViTAdapterFeatureWrapper

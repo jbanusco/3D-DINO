@@ -10,6 +10,7 @@ from typing import Dict, Optional
 import torch
 from torch import nn
 from torchmetrics import MetricCollection
+from monai.inferers import sliding_window_inference
 
 from dinov2.data import DictDatasetWithEnumeratedTargets, SamplerType, make_data_loader
 import dinov2.distributed as distributed
@@ -168,14 +169,26 @@ def evaluate_dict(
 
     pred_dict = {}
     for samples in metric_logger.log_every(data_loader, 10, header):
-        outputs = model(samples['image'].to(device))
+        x = samples['image'].to(device)
+
+        # infer dimensions from input tensor
+        # batch_size = x.shape[0]
+        # image_size = x.shape[2:]   # (H, W) for 2D or (H, W, D) for 3D
+        # decide 2D vs 3D roi_size based on tensor rank
+        # x shapes: (B, C, H, W) => ndim==4; (B, C, H, W, D) => ndim==5
+        roi_size = (112, 112) if x.ndim == 4 else (112, 112, 112)
+
+        # sw_batch_size: number of patches per forward pass (not loader batch size!)
+        sw_batch_size = 1
+        outputs = sliding_window_inference(x, roi_size, sw_batch_size, model, overlap=0.5)
+        # outputs = model(samples['image'].to(device))
         targets = samples['label'].to(device)
 
         if criterion is not None:
             loss = criterion(outputs, targets)
             metric_logger.update(loss=loss.item())
 
-        for k, metric in metrics.items():
+        for k, metric in metrics.items():            
             metric_inputs = postprocessors[k](outputs, targets)
             # print(metric_inputs['preds'].argmax(dim=1), metric_inputs['target'])
             metric.update(**metric_inputs)
