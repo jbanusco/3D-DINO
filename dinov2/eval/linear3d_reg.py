@@ -314,6 +314,7 @@ def evaluate_linear_regressors(
         _, results_dict_temp = evaluate_dict(
             feature_model,
             data_loader,
+            linear_regressors,
             postprocessors,
             metrics,
             torch.cuda.current_device(),
@@ -322,6 +323,7 @@ def evaluate_linear_regressors(
         _, results_dict_temp, pred_dict = evaluate_dict(
             feature_model,
             data_loader,
+            linear_regressors,
             postprocessors,
             metrics,
             torch.cuda.current_device(),

@@ -9,6 +9,7 @@ from typing import Dict, Optional
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torchmetrics import MetricCollection
 from monai.inferers import sliding_window_inference
 
@@ -147,56 +148,142 @@ def evaluate(
     return metric_logger_stats, stats
 
 
+def _pad_to_roi(patch, roi):
+    # patch: (1, C, H, W[, D]); roi is (RH, RW[, RD])
+    spatial = patch.shape[2:]
+    pad_spatial = [max(r - s, 0) for s, r in zip(spatial, roi)]
+    if len(roi) == 2:
+        # F.pad uses (W_left, W_right, H_left, H_right)
+        pad = (0, pad_spatial[1], 0, pad_spatial[0])
+    else:
+        # (D_left, D_right, W_left, W_right, H_left, H_right)
+        pad = (0, pad_spatial[2], 0, pad_spatial[1], 0, pad_spatial[0])
+    return F.pad(patch, pad)
+
+
+class PatchReducer:
+    @staticmethod
+    def _positions(S, R, ov):
+        if S <= R: return [0]
+        step = max(1, int(R * (1-ov)))
+        pos = list(range(0, S - R + 1, step))
+        if pos[-1] != S - R: pos.append(S - R)
+        return pos
+
+    @staticmethod
+    def coords(spatial, roi, overlap):
+        axes = [PatchReducer._positions(S, R, overlap) for S, R in zip(spatial, roi)]
+        if len(roi) == 2:
+            return [(h,w) for h in axes[0] for w in axes[1]]
+        else:
+            return [(h,w,d) for h in axes[0] for w in axes[1] for d in axes[2]]
+
+    @staticmethod
+    @torch.inference_mode()
+    def predict_reduce(backbone, heads: dict[str, nn.Module], x: torch.Tensor,
+                       roi, overlap=0.5, sw_bs=1, reduce="mean"):
+        B, spatial = x.shape[0], x.shape[2:]
+        coords = PatchReducer.coords(spatial, roi, overlap)
+
+        # collect per-sample per-patch features once
+        per_sample_feats: list[list[torch.Tensor]] = [[] for _ in range(B)]
+        batch_patches, owners = [], []
+
+        def flush():
+            nonlocal batch_patches, owners
+            if not batch_patches: return
+            batch = torch.cat(batch_patches, 0)
+            feats = backbone(batch)  # (Npatch, feat_dim, ...)
+            # split back
+            idx = 0
+            for i in owners:
+                per_sample_feats[i].append(feats[idx].detach())
+                idx += 1
+            batch_patches, owners = [], []
+
+        for i in range(B):
+            for c in coords:
+                if x.ndim == 4:
+                    h,w = c
+                    patch = x[i:i+1, :, h:h+roi[0], w:w+roi[1]]
+                else:
+                    h,w,d = c
+                    patch = x[i:i+1, :, h:h+roi[0], w:w+roi[1], d:d+roi[2]]
+                patch = _pad_to_roi(patch, roi)
+                batch_patches.append(patch)
+                owners.append(i)
+                if len(batch_patches) >= sw_bs: flush()
+        flush()
+
+        # reduce features then apply heads (or apply heads per patch then reduce — both ok)
+        outs: dict[str, torch.Tensor] = {}
+        for i in range(B):
+            stack = torch.stack(per_sample_feats[i], 0)  # (Npatch, feat_dim, ...)
+            feats_red = stack.mean(0) if reduce=="mean" else stack.max(0).values
+            per_sample_feats[i] = feats_red
+
+        # run heads once per sample
+        for k, head in heads.items():
+            preds = []
+            for i in range(B):
+                p = head(per_sample_feats[i].unsqueeze(0))  # (1, *)
+                preds.append(p.squeeze(0))
+            outs[k] = torch.stack(preds, 0)  # (B, *)
+        return outs
+
+
+
 @torch.inference_mode()
 def evaluate_dict(
     model: nn.Module,
     data_loader,
+    linear_regressors,
     postprocessors: Dict[str, nn.Module],
     metrics: Dict[str, MetricCollection],
     device: torch.device,
     criterion: Optional[nn.Module] = None,
     return_preds: bool = False,
-):
-    model.eval()
+):    
     if criterion is not None:
         criterion.eval()
-
-    for metric in metrics.values():
-        metric = metric.to(device)
 
     metric_logger = MetricLogger(delimiter="  ")
     header = "Test:"
 
     pred_dict = {}
+
+    model.eval(); linear_regressors.eval()
+    for k,m in metrics.items(): metrics[k] = m.to(device)
+
     for samples in metric_logger.log_every(data_loader, 10, header):
-        x = samples['image'].to(device)
+        x = samples["image"].to(device)
+        tgt = samples["label"].to(device)
+        roi = (112,112) if x.ndim==4 else (112,112,112)
 
-        # infer dimensions from input tensor
-        # batch_size = x.shape[0]
-        # image_size = x.shape[2:]   # (H, W) for 2D or (H, W, D) for 3D
-        # decide 2D vs 3D roi_size based on tensor rank
-        # x shapes: (B, C, H, W) => ndim==4; (B, C, H, W, D) => ndim==5
-        roi_size = (112, 112) if x.ndim == 4 else (112, 112, 112)
+        outs = PatchReducer.predict_reduce(
+            backbone=model,
+            heads=linear_regressors.regressors_dict,
+            x=x,
+            roi=roi,
+            overlap=0.5,
+            sw_bs=1,
+            reduce="mean",
+        )  # dict[k] -> (B, *)
 
-        # sw_batch_size: number of patches per forward pass (not loader batch size!)
-        sw_batch_size = 1
-        outputs = sliding_window_inference(x, roi_size, sw_batch_size, model, overlap=0.5)
-        # outputs = model(samples['image'].to(device))
-        targets = samples['label'].to(device)
-
-        if criterion is not None:
-            loss = criterion(outputs, targets)
-            metric_logger.update(loss=loss.item())
+        # if criterion is not None:
+        #     loss = criterion(outputs, targets)
+        #     metric_logger.update(loss=loss.item())
 
         for k, metric in metrics.items():            
-            metric_inputs = postprocessors[k](outputs, targets)
-            # print(metric_inputs['preds'].argmax(dim=1), metric_inputs['target'])
-            metric.update(**metric_inputs)
+            # metric_inputs = postprocessors[k](outputs, targets)            
+            mi = postprocessors[k](outs[k], tgt if not isinstance(tgt, dict) else tgt[k])
+            preds, target = mi["preds"], mi["target"]
+            metric.update(preds=preds, target=target)
 
             if k not in pred_dict:
                 pred_dict[k] = {'preds': [], 'target': []}
-            pred_dict[k]['preds'].extend(metric_inputs['preds'])
-            pred_dict[k]['target'].extend(metric_inputs['target'])
+            pred_dict[k]['preds'].append(preds.detach().cpu())
+            pred_dict[k]['target'].append(target.detach().cpu())
 
     metric_logger.synchronize_between_processes()
     logger.info(f"Averaged stats: {metric_logger}")
