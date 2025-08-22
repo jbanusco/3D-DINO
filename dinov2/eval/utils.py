@@ -12,14 +12,17 @@ from torch import nn
 import torch.nn.functional as F
 from torchmetrics import MetricCollection
 from monai.inferers import sliding_window_inference
+from typing import Dict, List, Tuple, Literal
 
 from dinov2.data import DictDatasetWithEnumeratedTargets, SamplerType, make_data_loader
 import dinov2.distributed as distributed
 from dinov2.logging import MetricLogger
 from dinov2.eval.segmentation_3d.vit_adapter import ViTAdapter
+from dinov2.eval.linear3d_reg import create_linear_input
 
 
 logger = logging.getLogger("dinov2")
+Reduce = Literal["mean", "max", "median"]
 
 
 class ModelWithNormalize(torch.nn.Module):
@@ -148,88 +151,151 @@ def evaluate(
     return metric_logger_stats, stats
 
 
-def _pad_to_roi(patch, roi):
-    # patch: (1, C, H, W[, D]); roi is (RH, RW[, RD])
+def _pad_to_roi(patch: torch.Tensor, roi: Tuple[int, ...]) -> torch.Tensor:
+    # patch: (1, C, H, W[, D]); roi: (RH, RW[, RD])
     spatial = patch.shape[2:]
     pad_spatial = [max(r - s, 0) for s, r in zip(spatial, roi)]
     if len(roi) == 2:
-        # F.pad uses (W_left, W_right, H_left, H_right)
+        # (W_left, W_right, H_left, H_right)
         pad = (0, pad_spatial[1], 0, pad_spatial[0])
     else:
         # (D_left, D_right, W_left, W_right, H_left, H_right)
         pad = (0, pad_spatial[2], 0, pad_spatial[1], 0, pad_spatial[0])
     return F.pad(patch, pad)
 
+def _positions(S: int, R: int, ov: float) -> List[int]:
+    if S <= R:
+        return [0]
+    step = max(1, int(R * (1.0 - ov)))
+    pos = list(range(0, S - R + 1, step))
+    if pos[-1] != S - R:
+        pos.append(S - R)
+    return pos
 
-class PatchReducer:
-    @staticmethod
-    def _positions(S, R, ov):
-        if S <= R: return [0]
-        step = max(1, int(R * (1-ov)))
-        pos = list(range(0, S - R + 1, step))
-        if pos[-1] != S - R: pos.append(S - R)
-        return pos
+def _coords(spatial: Tuple[int, ...], roi: Tuple[int, ...], overlap: float):
+    axes = [_positions(S, R, overlap) for S, R in zip(spatial, roi)]
+    if len(roi) == 2:
+        for h in axes[0]:
+            for w in axes[1]:
+                yield (h, w)
+    else:
+        for h in axes[0]:
+            for w in axes[1]:
+                for d in axes[2]:
+                    yield (h, w, d)
 
-    @staticmethod
-    def coords(spatial, roi, overlap):
-        axes = [PatchReducer._positions(S, R, overlap) for S, R in zip(spatial, roi)]
-        if len(roi) == 2:
-            return [(h,w) for h in axes[0] for w in axes[1]]
-        else:
-            return [(h,w,d) for h in axes[0] for w in axes[1] for d in axes[2]]
+@torch.inference_mode()
+def predict_reduce_tokens(
+    backbone: nn.Module,                         # returns x_tokens_list
+    heads: Dict[str, nn.Module],                 # {name: LinearRegressor}
+    x: torch.Tensor,                             # (B,C,H,W[,D])
+    roi: Tuple[int, ...],                        # (RH,RW[,RD])
+    overlap: float = 0.5,
+    sw_bs: int = 1,
+    reduce: Reduce = "mean",
+    create_linear_input_fn=None,                 # pass your create_linear_input
+) -> Dict[str, torch.Tensor]:
+    assert create_linear_input_fn is not None, "Pass create_linear_input_fn=create_linear_input"
 
-    @staticmethod
-    @torch.inference_mode()
-    def predict_reduce(backbone, heads: dict[str, nn.Module], x: torch.Tensor,
-                       roi, overlap=0.5, sw_bs=1, reduce="mean"):
-        B, spatial = x.shape[0], x.shape[2:]
-        coords = PatchReducer.coords(spatial, roi, overlap)
+    B, spatial = x.shape[0], x.shape[2:]
+    coords = list(_coords(spatial, roi, overlap))
+    device = x.device
 
-        # collect per-sample per-patch features once
-        per_sample_feats: list[list[torch.Tensor]] = [[] for _ in range(B)]
+    # Accumulators per head
+    if reduce == "mean":
+        # running mean of predictions: (B, num_outputs)
+        pred_mean: Dict[str, torch.Tensor] = {}
+        counts = torch.zeros(B, dtype=torch.long)
+    elif reduce == "max":
+        pred_max: Dict[str, torch.Tensor] = {}
+        seen = torch.zeros(B, dtype=torch.bool)
+    else:  # median
+        # store per-patch predictions on CPU to save VRAM
+        pred_lists: Dict[str, List[List[torch.Tensor]]] = {k: [[] for _ in range(B)] for k in heads.keys()}
+
+    batch_patches: List[torch.Tensor] = []
+    owners: List[int] = []
+
+    def flush():
+        nonlocal batch_patches, owners, counts, seen
+        if not batch_patches:
+            return
+        batch = torch.cat(batch_patches, 0)  # (Npatch, C, *roi)
+
+        # 1) Backbone forward on this mini-batch
+        x_tokens_list = backbone(batch)  # list/tuple per block, each with batch dim
+
+        # 2) For each head, build linear input and compute patch predictions
+        for name, head in heads.items():
+            li = create_linear_input_fn(x_tokens_list, head.use_n_blocks, head.use_avgpool)
+            if li.ndim > 2:
+                li = li.reshape(li.shape[0], -1)
+            preds_patch = head.linear(li)  # (Npatch, num_outputs)
+
+            if reduce == "mean":
+                # streaming mean per owner
+                if name not in pred_mean:
+                    pred_mean[name] = torch.zeros((B, preds_patch.shape[1]), device=device, dtype=preds_patch.dtype)
+                # update per-row
+                for row_idx, owner in enumerate(owners):
+                    n = counts[owner].item()
+                    current = pred_mean[name][owner]
+                    pred_mean[name][owner] = current + (preds_patch[row_idx] - current) / (n + 1)
+                # update counts once per owner occurrence
+                for owner in owners:
+                    counts[owner] += 1
+
+            elif reduce == "max":
+                if name not in pred_max:
+                    pred_max[name] = torch.empty((B, preds_patch.shape[1]), device=device, dtype=preds_patch.dtype)
+                for row_idx, owner in enumerate(owners):
+                    if not seen[owner]:
+                        pred_max[name][owner] = preds_patch[row_idx]
+                    else:
+                        pred_max[name][owner] = torch.maximum(pred_max[name][owner], preds_patch[row_idx])
+                for owner in owners:
+                    seen[owner] = True
+
+            else:  # median
+                # move to CPU immediately to save GPU mem
+                preds_cpu = preds_patch.detach().cpu()
+                for row_idx, owner in enumerate(owners):
+                    pred_lists[name][owner].append(preds_cpu[row_idx])
+
         batch_patches, owners = [], []
 
-        def flush():
-            nonlocal batch_patches, owners
-            if not batch_patches: return
-            batch = torch.cat(batch_patches, 0)
-            feats = backbone(batch)  # (Npatch, feat_dim, ...)
-            # split back
-            idx = 0
-            for i in owners:
-                per_sample_feats[i].append(feats[idx].detach())
-                idx += 1
-            batch_patches, owners = [], []
+    # Build mini-batches of patches
+    for i in range(B):
+        for c in coords:
+            if x.ndim == 4:
+                h, w = c
+                patch = x[i:i+1, :, h:h+roi[0], w:w+roi[1]]
+            else:
+                h, w, d = c
+                patch = x[i:i+1, :, h:h+roi[0], w:w+roi[1], d:d+roi[2]]
+            patch = _pad_to_roi(patch, roi)
+            batch_patches.append(patch)
+            owners.append(i)
+            if len(batch_patches) >= sw_bs:
+                flush()
+    flush()
 
-        for i in range(B):
-            for c in coords:
-                if x.ndim == 4:
-                    h,w = c
-                    patch = x[i:i+1, :, h:h+roi[0], w:w+roi[1]]
-                else:
-                    h,w,d = c
-                    patch = x[i:i+1, :, h:h+roi[0], w:w+roi[1], d:d+roi[2]]
-                patch = _pad_to_roi(patch, roi)
-                batch_patches.append(patch)
-                owners.append(i)
-                if len(batch_patches) >= sw_bs: flush()
-        flush()
-
-        # reduce features then apply heads (or apply heads per patch then reduce — both ok)
-        outs: dict[str, torch.Tensor] = {}
-        for i in range(B):
-            stack = torch.stack(per_sample_feats[i], 0)  # (Npatch, feat_dim, ...)
-            feats_red = stack.mean(0) if reduce=="mean" else stack.max(0).values
-            per_sample_feats[i] = feats_red
-
-        # run heads once per sample
-        for k, head in heads.items():
-            preds = []
+    # 3) Finalize
+    outs: Dict[str, torch.Tensor] = {}
+    if reduce == "mean":
+        outs = pred_mean
+    elif reduce == "max":
+        outs = pred_max
+    else:  # median
+        for name in heads.keys():
+            preds_k = []
             for i in range(B):
-                p = head(per_sample_feats[i].unsqueeze(0))  # (1, *)
-                preds.append(p.squeeze(0))
-            outs[k] = torch.stack(preds, 0)  # (B, *)
-        return outs
+                stack = torch.stack(pred_lists[name][i], dim=0)  # (Npatch_i, num_outputs) on CPU
+                med = torch.median(stack, dim=0).values
+                preds_k.append(med)
+            outs[name] = torch.stack(preds_k, dim=0).to(device)
+
+    return outs  # dict[name] -> (B, num_outputs)
 
 
 
@@ -260,14 +326,15 @@ def evaluate_dict(
         tgt = samples["label"].to(device)
         roi = (112,112) if x.ndim==4 else (112,112,112)
 
-        outs = PatchReducer.predict_reduce(
+        outs = PatchReducer.predict_reduce_tokens(
             backbone=model,
             heads=linear_regressors.regressors_dict,
             x=x,
             roi=roi,
             overlap=0.5,
             sw_bs=1,
-            reduce="mean",
+            create_linear_input_fn=create_linear_input,
+            reduce="median",              # "mean" | "max" | "median"
         )  # dict[k] -> (B, *)
 
         # if criterion is not None:
