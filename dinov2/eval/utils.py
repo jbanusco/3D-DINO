@@ -340,16 +340,16 @@ def evaluate_dict(
         tgt = samples["label"].to(device)
         roi = (112,112) if x.ndim==4 else (112,112,112)
 
-        outs = PatchReducer.predict_reduce_tokens(
+        outs = predict_reduce_tokens(
             backbone=model,
             heads=linear_regressors.regressors_dict,
             x=x,
-            roi=roi,
+            roi=(112,112) if x.ndim==4 else (112,112,112),
             overlap=0.5,
-            sw_bs=1,
-            create_linear_input_fn=create_linear_input,
+            sw_bs=1,                      # raise for speed if you have headroom
             reduce="median",              # "mean" | "max" | "median"
-        )  # dict[k] -> (B, *)
+            create_linear_input_fn=create_linear_input,
+        )
 
         # if criterion is not None:
         #     loss = criterion(outputs, targets)
