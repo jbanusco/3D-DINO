@@ -167,7 +167,7 @@ def make_classification_transform_3d(dataset_name: str, image_size: int, min_int
             ScaleIntensityRangePercentilesd(
                 keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1.0, clip=True, channel_wise=True
             ),
-            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode=min_int),            
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), value=min_int),            
             RandSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size), random_size=False),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=0),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=1),
@@ -268,7 +268,7 @@ def make_regression_transform_3d(dataset_name: str, image_size: int, min_int: fl
             ScaleIntensityRangePercentilesd(
                 keys=["image"], lower=0.05, upper=99.95, b_min=min_int, b_max=1.0, clip=True, channel_wise=True
             ),
-            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), mode=min_int),
+            SpatialPadd(keys=["image"], spatial_size=(image_size, image_size, image_size), value=min_int),
             RandSpatialCropd(keys=["image"], roi_size=(image_size, image_size, image_size), random_size=False),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=0),
             RandFlipd(keys=["image"], prob=0.5, spatial_axis=1),

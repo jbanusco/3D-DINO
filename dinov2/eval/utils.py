@@ -175,7 +175,7 @@ def _pad_to_roi(patch: torch.Tensor, roi: Tuple[int, ...]) -> torch.Tensor:
     else:
         # (D_left, D_right, W_left, W_right, H_left, H_right)
         pad = (0, pad_spatial[2], 0, pad_spatial[1], 0, pad_spatial[0])
-    return F.pad(patch, pad)
+    return F.pad(patch, pad, value=-1)
 
 def _positions(S: int, R: int, ov: float) -> List[int]:
     if S <= R:
@@ -323,6 +323,7 @@ def evaluate_dict(
     device: torch.device,
     criterion: Optional[nn.Module] = None,
     return_preds: bool = False,
+    reduce: Literal = "median",
 ):    
     if criterion is not None:
         criterion.eval()
@@ -338,6 +339,7 @@ def evaluate_dict(
     for samples in metric_logger.log_every(data_loader, 10, header):
         x = samples["image"].to(device)
         tgt = samples["label"].to(device)
+        batch_size = x.shape[0]
         roi = (112,112) if x.ndim==4 else (112,112,112)
 
         outs = predict_reduce_tokens(
@@ -346,8 +348,9 @@ def evaluate_dict(
             x=x,
             roi=(112,112) if x.ndim==4 else (112,112,112),
             overlap=0.5,
-            sw_bs=1,                      # raise for speed if you have headroom
-            reduce="median",              # "mean" | "max" | "median"
+            # sw_bs=1,                      # raise for speed if you have headroom
+            sw_bs=batch_size,
+            reduce=reduce,              # "mean" | "max" | "median"
             create_linear_input_fn=create_linear_input,
         )
 
@@ -357,8 +360,10 @@ def evaluate_dict(
 
         for k, metric in metrics.items():            
             # metric_inputs = postprocessors[k](outputs, targets)            
-            mi = postprocessors[k](outs[k], tgt if not isinstance(tgt, dict) else tgt[k])
-            preds, target = mi["preds"], mi["target"]
+            mi = {"preds": outs[k], 
+                  "target": tgt if not isinstance(tgt, dict) else tgt[k]
+                  }
+            preds, target = mi["preds"].squeeze(), mi["target"].squeeze()
             metric.update(preds=preds, target=target)
 
             if k not in pred_dict:

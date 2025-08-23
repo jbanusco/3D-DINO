@@ -8,7 +8,7 @@ BASE_DATA_DIR=${SPLITS_FOLDER} #/${DATASET_NAME}
 CONFIG_FILE=dinov2/configs/train/vit3d_highres.yaml
 DINO_PATH=/home/jovyan/workspace/3D-DINO
 
-OUTPUT_DIR=/home/jovyan/shared/pedro-maciasgordaliza/fomo25/finetuning_exps/mimic_preprocess/task3/2channels/fold_0/
+OUTPUT_DIR=/home/jovyan/shared/pedro-maciasgordaliza/fomo25/finetuning_exps/mimic_preprocess/task3/2channels/fold_0_sw_tf/
 CACHE_DIR=/home/jovyan/workspace/3D-DINO/finetuning_exps/mimic_preprocess/task3/2channels/fold_0_cache/
 PRETRAINED_WEIGHTS=/home/jovyan/shared/pedro-maciasgordaliza/fomo25/Dino3d_last-models/highres_teacher_checkpoint.pth
 
@@ -17,7 +17,7 @@ cd $DINO_PATH
 export PYTHONPATH=${DINO_PATH}:${PYTHONPATH}
 
 echo 'Step 2: Create conda environment...'
-conda create -n dino3d python=3.9 -y
+# conda create -n dino3d python=3.9 -y
 
 echo 'Step 3: Initialize and activate environment...'
 conda init bash
@@ -59,7 +59,7 @@ python dinov2/eval/linear3d_reg.py \
   --num-workers 15 \
   --dataset-seed 0 \
   --learning-rate-fm 1e-4 \
-  --train-feature-model False \
+  --train-feature-model True \
   --resize-scale 1.0 \
   --cache-dir ${CACHE_DIR}
 

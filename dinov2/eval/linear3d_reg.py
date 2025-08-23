@@ -18,6 +18,7 @@ import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 from monai.inferers import sliding_window_inference
+from monai.data import pad_list_data_collate
 
 from dinov2.data import SamplerType, make_data_loader, make_regression_dataset_3d
 from dinov2.data.transforms import make_regression_transform_3d
@@ -39,6 +40,13 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+class LinearEvalBundle(nn.Module):
+    def __init__(self, feature_model: nn.Module, linear_regressors: nn.Module):
+        super().__init__()
+        self.feature_model = feature_model
+        self.linear_regressors = linear_regressors
 
 
 logger = logging.getLogger("dinov2")
@@ -318,6 +326,7 @@ def evaluate_linear_regressors(
             postprocessors,
             metrics,
             torch.cuda.current_device(),
+            reduce="median",
         )
     else:
         _, results_dict_temp, pred_dict = evaluate_dict(
@@ -328,6 +337,7 @@ def evaluate_linear_regressors(
             metrics,
             torch.cuda.current_device(),
             return_preds=True,
+            reduce="median",
         )
 
     logger.info("")
@@ -384,8 +394,12 @@ def eval_linear(
     resume=True,
     regressor_fpath=None,
 ):
-    checkpointer = Checkpointer(linear_regressors, output_dir, optimizer=optimizer, scheduler=scheduler)
+    bundle = LinearEvalBundle(feature_model, remove_ddp_wrapper(linear_regressors))
+    checkpointer = Checkpointer(bundle, output_dir, optimizer=optimizer, scheduler=scheduler)
     start_iter = checkpointer.resume_or_load(regressor_fpath or "", resume=resume).get("iteration", -1) + 1
+    # optional: sync bundle weights back to your working modules
+    feature_model.load_state_dict(bundle.feature_model.state_dict())
+    remove_ddp_wrapper(linear_regressors).load_state_dict(bundle.linear_regressors.state_dict())
 
     periodic_checkpointer = PeriodicCheckpointer(checkpointer, checkpoint_period, max_iter=max_iter)
     iteration = start_iter
@@ -461,7 +475,10 @@ def eval_linear(
         iteration = iteration + 1
 
     # load best model
-    best_iter = checkpointer.resume_or_load(f'{output_dir}/best_val.pth', resume=False).get("iteration", -1) + 1
+    best_iter = checkpointer.resume_or_load(f'{output_dir}/best_val.pth', resume=False).get("iteration", -1) + 1    
+    feature_model.load_state_dict(bundle.feature_model.state_dict())
+    remove_ddp_wrapper(linear_regressors).load_state_dict(bundle.linear_regressors.state_dict())
+
     logger.info("Final validation with iter {}".format(best_iter))
     val_results_dict = evaluate_linear_regressors(
         feature_model=feature_model,
@@ -583,7 +600,10 @@ def run_eval_linear(
     optimizer = torch.optim.SGD(optim_param_groups, momentum=0.9, weight_decay=0)
     max_iter = epochs * epoch_length
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max_iter, eta_min=0)
-    checkpointer = Checkpointer(linear_regressors, output_dir, optimizer=optimizer, scheduler=scheduler)
+
+    bundle = LinearEvalBundle(feature_model, remove_ddp_wrapper(linear_regressors))
+    checkpointer = Checkpointer(bundle, output_dir, optimizer=optimizer, scheduler=scheduler)
+    # checkpointer = Checkpointer(linear_regressors, output_dir, optimizer=optimizer, scheduler=scheduler)
     start_iter = checkpointer.resume_or_load(regressor_fpath or "", resume=resume).get("iteration", -1) + 1
 
     # train val test dataloaders
@@ -606,6 +626,7 @@ def run_eval_linear(
         drop_last=False,
         shuffle=False,
         persistent_workers=False,
+        collate_fn=pad_list_data_collate,   # pads to the largest shape in the batch
     )
     test_data_loader = make_data_loader(
         dataset=test_dataset,
@@ -615,6 +636,7 @@ def run_eval_linear(
         drop_last=False,
         shuffle=False,
         persistent_workers=False,
+        collate_fn=pad_list_data_collate,   # pads to the largest shape in the batch
     )
 
     checkpoint_period = save_checkpoint_frequency * epoch_length
@@ -640,6 +662,8 @@ def run_eval_linear(
 
     # load best model
     test_iter = checkpointer.resume_or_load(f'{output_dir}/best_val.pth', resume=False).get("iteration", -1) + 1
+    feature_model.load_state_dict(bundle.feature_model.state_dict())
+    remove_ddp_wrapper(linear_regressors).load_state_dict(bundle.linear_regressors.state_dict())
     logger.info(f"Testing on {dataset_name}")
 
     test_results_dict = test_on_datasets(
