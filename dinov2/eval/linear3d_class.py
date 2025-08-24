@@ -322,6 +322,7 @@ def evaluate_linear_regressors(
         _, results_dict_temp = evaluate_dict(
             feature_model,
             data_loader,
+            linear_regressors,
             postprocessors,
             metrics,
             torch.cuda.current_device(),
@@ -331,6 +332,7 @@ def evaluate_linear_regressors(
         _, results_dict_temp, pred_dict = evaluate_dict(
             feature_model,
             data_loader,
+            linear_regressors,
             postprocessors,
             metrics,
             torch.cuda.current_device(),
@@ -551,7 +553,8 @@ def run_eval_linear(
         base_directory=base_data_dir,
         train_transforms=train_transform,
         val_transforms=val_transform,
-        cache_path=data_cache_path,
+        # cache_path=data_cache_path,
+        cache_path=None,
         dataset_seed=dataset_seed,
     )
     metric = build_metric(MetricType.MEAN_ACCURACY, num_classes=num_outputs, ks=(1,))
@@ -625,6 +628,7 @@ def run_eval_linear(
         drop_last=False,
         shuffle=False,
         persistent_workers=False,
+        collate_fn=pad_list_data_collate,   # pads to the largest shape in the batch
     )
     test_data_loader = make_data_loader(
         dataset=test_dataset,
@@ -634,6 +638,7 @@ def run_eval_linear(
         drop_last=False,
         shuffle=False,
         persistent_workers=False,
+        collate_fn=pad_list_data_collate,   # pads to the largest shape in the batch
     )
 
     checkpoint_period = save_checkpoint_frequency * epoch_length

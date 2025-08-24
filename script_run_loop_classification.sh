@@ -37,9 +37,9 @@ for FOLD in 0 1 2 3 4; do
   echo "===================== FOLD ${FOLD} ====================="
 
   DATASET_NAME="fomo-task1-4ch-mimic_fold_${FOLD}"
-  OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}"
+  # OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}"
   OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}_sw_tf"
-  CACHE_DIR="${CACHE_ROOT}/fold_${FOLD}_cache_class"
+  CACHE_DIR="${CACHE_ROOT}/fold_${FOLD}"
 
   # Prep dirs
   rm -rfd ${CACHE_DIR}
