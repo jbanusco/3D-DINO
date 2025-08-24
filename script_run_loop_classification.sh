@@ -37,8 +37,9 @@ for FOLD in 0 1 2 3 4; do
   echo "===================== FOLD ${FOLD} ====================="
 
   DATASET_NAME="fomo-task1-4ch-mimic_fold_${FOLD}"
-  # OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}"
-  OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}_sw_tf"
+  # OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}"  
+  OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}_sw_ch"  # checkpoint big, no tf
+  # OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}_sw_tf"  # checkpoint big, train tf
   CACHE_DIR="${CACHE_ROOT}/fold_${FOLD}"
 
   # Prep dirs
@@ -66,7 +67,7 @@ for FOLD in 0 1 2 3 4; do
   --num-workers 15 \
   --dataset-seed 0 \
   --learning-rate-fm 1e-4 \
-  --train-feature-model True \
+  --train-feature-model False \
   --resize-scale 1.0 \
   --cache-dir ${CACHE_DIR}
 

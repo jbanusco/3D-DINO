@@ -33,10 +33,13 @@ PY
 
 # === Loop folds ===
 for FOLD in 0 1 2 3 4; do
+# for FOLD in 0; do
   echo "===================== FOLD ${FOLD} ====================="
 
   DATASET_NAME="fomo-task1-4ch-mimic_fold_${FOLD}"
-  OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}"
+  # OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}"
+  # OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}_sw_tf"
+  OUTPUT_DIR="${OUTPUT_ROOT}/fold_${FOLD}_sw_ch"
   CACHE_DIR="${CACHE_ROOT}/fold_${FOLD}_cache"
 
   # Prep dirs
