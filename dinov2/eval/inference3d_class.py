@@ -2,10 +2,12 @@ import os
 import sys
 import json
 import torch
+import torch.nn as nn
 from functools import partial
 from fvcore.common.checkpoint import Checkpointer, PeriodicCheckpointer
 from pathlib import Path
 from monai.inferers import sliding_window_inference
+from monai.data import pad_list_data_collate
 
 from dinov2.eval.linear3d_class import remove_ddp_wrapper
 from dinov2.eval.utils import ModelWithIntermediateLayers, evaluate_dict, MultiChannelFeatureModel, ViTAdapterFeatureWrapper
@@ -13,7 +15,7 @@ from dinov2.eval.metrics import build_metric, MetricType
 from dinov2.data import make_classification_dataset_3d, make_data_loader, SamplerType
 from dinov2.data.transforms import make_classification_transform_3d
 from dinov2.eval.setup import setup_and_build_model_3d
-from dinov2.eval.linear3d_class import LinearRegressor, AllRegressors, LinearPostprocessor, create_linear_input
+from dinov2.eval.linear3d_class import LinearRegressor, AllRegressors, LinearPostprocessor, create_linear_input, LinearEvalBundle
 from dinov2.eval.linear3d_reg import str2bool
 from dinov2.eval.setup import get_args_parser as get_setup_args_parser
 import argparse
@@ -33,21 +35,33 @@ def run_inference(args):
     autocast_ctx = partial(torch.cuda.amp.autocast, enabled=True, dtype=autocast_dtype)
 
     # === 2. Dataset and transforms
-    _, val_transform = make_classification_transform_3d(args.dataset_name, args.image_size, min_int=-1.0, resize_scale=args.resize_scale)
-    _, val_dataset, test_dataset, input_channels, num_outputs = make_classification_dataset_3d(
+    train_transform, val_transform = make_classification_transform_3d(args.dataset_name, args.image_size, min_int=-1.0, resize_scale=args.resize_scale)
+    train_dataset, val_dataset, test_dataset, input_channels, num_outputs = make_classification_dataset_3d(
         dataset_name=args.dataset_name,
         dataset_percent=args.dataset_percent,
         base_directory=args.base_data_dir,
-        train_transforms=None,
+        train_transforms=train_transform,
         val_transforms=val_transform,
-        cache_path=args.cache_dir,
+        # cache_path=args.cache_dir,
+        cache_path=None,
         dataset_seed=args.dataset_seed,
     )
 
     if args.use_validation:
         print(f"[!] Using validation set for inference: {len(val_dataset)} samples.")
         test_dataset = val_dataset
-    
+
+    train_loader = make_data_loader(
+        dataset=train_dataset,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        shuffle=False,
+        seed=0,
+        sampler_type=SamplerType.SHARDED_INFINITE,
+        drop_last=False,
+        persistent_workers=True,
+    )
+        
     test_loader = make_data_loader(
         dataset=test_dataset,
         batch_size=args.batch_size,
@@ -56,6 +70,7 @@ def run_inference(args):
         drop_last=False,
         shuffle=False,
         persistent_workers=False,
+        collate_fn=pad_list_data_collate,   # pads to the largest shape in the batch
     )
 
     # === 3. Load feature extractor
@@ -69,7 +84,8 @@ def run_inference(args):
     feature_model.cuda()
 
     # === 4. Create and load regressors
-    sample_output = feature_model(test_dataset[0]['image'].unsqueeze(0).cuda())
+    sample_output = feature_model(train_dataset[0]['image'].unsqueeze(0).cuda())
+    # print(sample_output[0].shape)
     linear_regressors = AllRegressors(torch.nn.ModuleDict())  # Dummy container for Checkpointer
     optimizer = torch.optim.SGD([torch.tensor(0.0, requires_grad=True)], lr=1e-3)  # Dummy optimizer
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)  # Dummy scheduler
@@ -101,29 +117,48 @@ def run_inference(args):
     n_blocks = 1 if "1_blocks" in best_regressor_name else 4
     avgpool = "avgpool_True" in best_regressor_name
     out_dim = create_linear_input(sample_output, use_n_blocks=n_blocks, use_avgpool=avgpool).shape[1]
+    print(out_dim)
     regressor = LinearRegressor(out_dim, n_blocks, avgpool, num_outputs).cuda()    
-    regressor_ckpt = torch.load(f"{args.output_dir}/best_val.pth", map_location="cuda")
 
+    regressor_ckpt = torch.load(f"{args.output_dir}/best_val.pth", map_location="cuda")
+    # checkpointer = Checkpointer(bundle, output_dir, optimizer=optimizer, scheduler=scheduler)
+    # test_iter = checkpointer.resume_or_load(f'{output_dir}/best_val.pth', resume=False) #.get("iteration", -1) + 1
+    # feature_model.load_state_dict(bundle.feature_model.state_dict())
+    # remove_ddp_wrapper(linear_regressors).load_state_dict(bundle.linear_regressors.state_dict())
+    # print(regressor_ckpt['model'].keys())
     regressor.load_state_dict({
-        k.replace(f"regressors_dict.{best_regressor_name}.", ""): v
+        k.replace(f"linear_regressors.regressors_dict.{best_regressor_name}.", ""): v
         for k, v in regressor_ckpt["model"].items()
-        if k.startswith(f"regressors_dict.{best_regressor_name}.")
+        if k.startswith(f"linear_regressors.regressors_dict.{best_regressor_name}.")
     })    
     # regressor.load_state_dict(regressor_ckpt["model"]["regressor." + best_regressor_name])
 
+    feature_model.load_state_dict({
+        k.replace(f"feature_model.", ""): v
+        for k, v in regressor_ckpt["model"].items()
+        if k.startswith(f"feature_model.")
+    })
+    
     postprocessor = LinearPostprocessor(regressor.eval().cuda())
 
     # === 5. Run inference
     # postprocessors = {k: LinearPostprocessor(v) for k, v in linear_regressors.regressors_dict.items()}
     # metrics = {k: metric.clone() for k in linear_regressors.regressors_dict}
+
+    # Need to pass regressors_dict
+    linear_regressor_dict = nn.ModuleDict()
+    linear_regressor_dict[best_regressor_name] = regressor
+    linear_regressors = AllRegressors(linear_regressor_dict)
     metric = build_metric(MetricType.MEAN_ACCURACY, num_classes=num_outputs, ks=(1,))
     _, _, pred_dict = evaluate_dict(
         feature_model,
         test_loader,
+        linear_regressors,
         {best_regressor_name: postprocessor},  # postprocessors
         {best_regressor_name: metric},  # metrics
         torch.cuda.current_device(),
-        return_preds=True
+        return_preds=True,
+        reduce="max",
     )
     preds = pred_dict[best_regressor_name]
 
@@ -142,9 +177,10 @@ def run_inference(args):
         os.makedirs(subject_dir, exist_ok=True)
 
         # Apply softmax to get probabilities
-        probabilities = F.softmax(score, dim=-1)
+        probabilities = F.softmax(score, dim=-1)[0]
 
         # prob. of positive class
+        print(probabilities)
         pred_score = probabilities[1].item() if len(probabilities) > 1 else probabilities[0].item()
         with open(os.path.join(subject_dir, "prediction.txt"), "w") as f:
             f.write(f"{pred_score:.6f}")
@@ -169,12 +205,13 @@ def get_args():
     parser.add_argument("--base-data-dir", type=str, required=True, help="Base directory for the dataset")
     parser.add_argument("--cache-dir", type=str, required=True, help="Directory to cache dataset files")
     parser.add_argument("--image-size", type=int, default=112, help="Size of the input images")
-    parser.add_argument("--batch-size", type=int, default=2, help="Batch size for inference")
+    parser.add_argument("--batch-size", type=int, default=1, help="Batch size for inference")
     parser.add_argument("--num-workers", type=int, default=4, help="Number of workers for data loading")
     parser.add_argument("--dataset-seed", type=int, default=0, help="Seed for dataset shuffling")
     parser.add_argument("--resize-scale", type=float, default=1.0, help="Resize scale for images")
     # parser.add_argument("--pretrained-weights", type=str, required=True, help="Path to the pretrained model weights")
     parser.add_argument("--use_validation", type=str2bool, default=False, help="Use validation set for inference")
+    # parser.add_argument("--use_validation", type=str2bool, default=False, help="Use validation set for inference")
     return parser.parse_args()
 
 
