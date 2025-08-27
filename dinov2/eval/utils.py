@@ -359,13 +359,17 @@ def evaluate_dict(
         #     metric_logger.update(loss=loss.item())
 
         for k, metric in metrics.items():            
-            preds = outs[k]                           # (B, C)
+            preds = outs[k]                          # (B, C)
             if preds.ndim == 1:                       # just in case
                 preds = preds.unsqueeze(0)            # (1, C)
         
             target = tgt if not isinstance(tgt, dict) else tgt[k]
             target = target.long().view(-1)           # (B,)
             
+            if preds.shape[1] == 1:
+                target = target.squeeze()
+                preds = preds.squeeze()
+                
             metric.update(preds=preds, target=target)
 
             if k not in pred_dict:
