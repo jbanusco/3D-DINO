@@ -86,6 +86,7 @@ def run_inference(args):
     # === 4. Create and load regressors
     sample_output = feature_model(train_dataset[0]['image'].unsqueeze(0).cuda())
     # print(sample_output[0].shape)
+    
     linear_regressors = AllRegressors(torch.nn.ModuleDict())  # Dummy container for Checkpointer
     optimizer = torch.optim.SGD([torch.tensor(0.0, requires_grad=True)], lr=1e-3)  # Dummy optimizer
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)  # Dummy scheduler

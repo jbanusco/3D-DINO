@@ -265,6 +265,16 @@ def make_regression_dataset_3d(
     random.Random(dataset_seed).shuffle(datalist['training'])
     logger.info(f"Shuffled training data with seed {dataset_seed}")
 
+    # Replace in the datalist elements
+    # /home/jovyan/shared/pedro-maciasgordaliza/fomo25/ for /media/jaume/T7, well for the base_directory
+    # base_directory = "/media/jaume/T7/"
+    # old_base = "/home/jovyan/shared/pedro-maciasgordaliza/fomo25/"
+    # for split in ['training', 'validation', 'test']:
+    #     for item in datalist[split]:
+    #         for key, value in item.items():
+    #             if isinstance(value, str) and old_base in value:
+    #                 item[key] = value.replace(old_base, base_directory)
+
     train_data_ind = int(round(len(datalist['training']) * (dataset_percent / 100)))
     train_datalist = datalist['training'][:train_data_ind]
     val_datalist = datalist['validation']
