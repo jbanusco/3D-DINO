@@ -208,6 +208,7 @@ def predict_reduce_tokens(
     sw_bs: int = 1,
     reduce: Reduce = "mean",
     create_linear_input_fn=None,                 # pass your create_linear_input
+    topk: int = 3,
 ) -> Dict[str, torch.Tensor]:
     assert create_linear_input_fn is not None, "Pass create_linear_input_fn=create_linear_input"
 
@@ -270,7 +271,7 @@ def predict_reduce_tokens(
                 for owner in owners:
                     seen[owner] = True
 
-            else:  # median
+            else:  # median or topk
                 # move to CPU immediately to save GPU mem
                 preds_cpu = preds_patch.detach().cpu()
                 for row_idx, owner in enumerate(owners):
@@ -300,7 +301,7 @@ def predict_reduce_tokens(
         outs = pred_mean
     elif reduce == "max":
         outs = pred_max
-    else:  # median
+    elif reduce == "median": # median
         for name in heads.keys():
             preds_k = []
             for i in range(B):
@@ -308,6 +309,19 @@ def predict_reduce_tokens(
                 med = torch.median(stack, dim=0).values
                 preds_k.append(med)
             outs[name] = torch.stack(preds_k, dim=0).to(device)
+    elif reduce == "topk":
+        for name in heads.keys():
+            preds_k = []
+            for i in range(B):
+                stack = torch.stack(pred_lists[name][i], dim=0)  # (Npatch_i, num_outputs) on CPU
+                # average of top-k
+                k = min(topk, stack.shape[0])
+                vals, _ = torch.topk(stack, k=k, dim=0)
+                agg = vals.mean(dim=0)
+                preds_k.append(agg)
+            outs[name] = torch.stack(preds_k, dim=0).to(device)
+    else:
+        raise ValueError(f"Unexpected reduction {reduce}")
 
     return outs  # dict[name] -> (B, num_outputs)
 
